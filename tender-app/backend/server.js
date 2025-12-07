@@ -6,42 +6,35 @@ const bodyParser = require('body-parser');
 const dotenv = require('dotenv');
 const User = require('./models/User');
 
-
-// Load environment variables
+// Load environment variables (.env local pe, Render pe env panel se aayega)
 dotenv.config();
 
 const app = express();
+
+// Port: Render apna PORT env deta hai, warna local pe 5000
 const PORT = process.env.PORT || 5000;
 
-// Middleware
-app.use(cors());
+// ----- Middleware -----
+app.use(cors()); // later: origin: "https://tumhara-frontend.vercel.app" bhi kar sakte hain
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI)
-  .then(async () => {
-    console.log('MongoDB connected to Atlas successfully!');
-    await createDefaultAdmin();   // ⬅️ ensure admin exists
-  })
-  .catch(err => console.error('MongoDB connection error:', err));
-
-
-
-// Import routes
+// ----- Routes import -----
 const authRoutes = require('./routes/auth');
 const tenderRoutes = require('./routes/tenderRoutes');
 const bidRoutes = require('./routes/bids');
-//chesking error
+
+// Just for debugging (can remove later)
 console.log('authRoutes type:', typeof authRoutes);
 console.log('tenderRoutes type:', typeof tenderRoutes);
 console.log('bidRoutes type:', typeof bidRoutes);
 
-// Use routes
+// ----- Use routes -----
 app.use('/api/auth', authRoutes);
 app.use('/api/tenders', tenderRoutes);
 app.use('/api/bids', bidRoutes);
-// Create or update default admin user
+
+// ----- Create or update default admin user -----
 async function createDefaultAdmin() {
   try {
     const adminEmail = 'admin@gmail.com';
@@ -69,10 +62,22 @@ async function createDefaultAdmin() {
   }
 }
 
+// ----- Connect to MongoDB & then start server -----
+mongoose
+  .connect(process.env.MONGODB_URI)
+  .then(async () => {
+    console.log('MongoDB connected to Atlas successfully!');
+    await createDefaultAdmin(); // ensure admin exists
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+    // Start server only after DB connected
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('MongoDB connection error:', err);
+    // Render logs me dikhega
+  });
 
+// For testing (optional)
 module.exports = app;

@@ -131,6 +131,48 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+// -------------------------------------------
+// BLOCK/UNBLOCK USER (Admin only)
+// -------------------------------------------
+router.put('/block-user/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Toggle the isBlocked status
+    user.isBlocked = !user.isBlocked;
+    await user.save();
+
+    // Return user without password
+    const { password, ...userWithoutPassword } = user.toObject();
+    res.json({
+      success: true,
+      message: `User ${user.isBlocked ? 'blocked' : 'unblocked'} successfully`,
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error('Block/unblock error:', error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// -------------------------------------------
+// DELETE USER (Admin only)
+// -------------------------------------------
+router.delete('/delete-user/:id', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.json({ message: "User deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
 // Export router and middlewares
 module.exports = router;
 module.exports.authenticateToken = authenticateToken;

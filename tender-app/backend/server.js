@@ -23,6 +23,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 const authRoutes = require('./routes/auth');
 const tenderRoutes = require('./routes/tenderRoutes');
 const bidRoutes = require('./routes/bids');
+const adminRoutes = require('./routes/adminRoutes');
 
 // Just for debugging (can remove later)
 console.log('authRoutes type:', typeof authRoutes);
@@ -33,6 +34,7 @@ console.log('bidRoutes type:', typeof bidRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/tenders', tenderRoutes);
 app.use('/api/bids', bidRoutes);
+app.use('/api/admin', adminRoutes);
 
 // ----- Create or update default admin user -----
 async function createDefaultAdmin() {

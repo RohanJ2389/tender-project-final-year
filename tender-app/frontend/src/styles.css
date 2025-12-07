@@ -4,7 +4,7 @@
   --accent: #e3f2fd;
   --bg-light: #f7f7f7;
   --text-main: #222;
-  --text-muted: #666;
+  --text-muted: #1f2933; /* Changed to darker gray for better contrast on light backgrounds */
   --white: #fff;
   --shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
   --radius: 8px;
@@ -146,7 +146,7 @@ html {
 
 /* HERO SECTION */
 .hero-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%); /* Changed to specified blue gradient for better contrast */
   color: white;
   padding: 6rem 0 4rem;
   text-align: center;
@@ -206,24 +206,24 @@ html {
 }
 
 .btn-primary {
-  background: white;
-  color: var(--primary);
+  background: var(--primary);
+  color: white;
 }
 
 .btn-primary:hover {
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--primary-dark);
   transform: translateY(-2px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
 }
 
 .btn-secondary {
-  background: transparent;
-  color: white;
-  border-color: white;
+  background: white;
+  color: var(--primary);
+  border-color: var(--primary);
 }
 
 .btn-secondary:hover {
-  background: white;
+  background: var(--accent);
   color: var(--primary);
 }
 
@@ -261,14 +261,16 @@ html {
 
 .stat-number {
   font-size: 2rem;
-  font-weight: 700;
+  font-weight: 700; /* Updated font weight for better visibility */
   display: block;
   margin-bottom: 0.5rem;
+  color: #ffffff; /* Changed to white for high contrast on blue background */
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.5); /* Added subtle text-shadow for better visibility */
 }
 
 .stat-label {
   font-size: 0.9rem;
-  opacity: 0.9;
+  color: rgba(255, 255, 255, 0.85); /* Changed to light white for better readability on blue background */
   font-weight: 500;
 }
 

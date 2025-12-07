@@ -2,51 +2,84 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles.css';
 
-// imports ke baad:
+// Backend base URL
 const API_BASE_URL =
-  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000"; 
-// yaha pe tum apna backend URL dal sakte ho
-
+  process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 const LandingPage = () => {
   const [stats, setStats] = useState({ tenders: 0, bids: 0, users: 0 });
 
   useEffect(() => {
-    const backBtn = document.getElementById("backToTop");
+    const backBtn = document.getElementById('backToTop');
+    let handleScroll;
+
     if (backBtn) {
-      const handleScroll = () => {
+      handleScroll = () => {
         const pos = window.scrollY || document.documentElement.scrollTop;
-        backBtn.style.display = pos > 200 ? "block" : "none";
+        backBtn.style.display = pos > 200 ? 'block' : 'none';
       };
-      window.addEventListener("scroll", handleScroll);
-      return () => window.removeEventListener("scroll", handleScroll);
+      window.addEventListener('scroll', handleScroll);
     }
 
-    // Fetch basic stats
+    // ✅ Hamesha stats fetch karo (scroll button se alag)
     fetchStats();
+
+    // Cleanup
+    return () => {
+      if (backBtn && handleScroll) {
+        window.removeEventListener('scroll', handleScroll);
+      }
+    };
   }, []);
 
   const fetchStats = async () => {
     try {
+      const token = localStorage.getItem('token');
+
+      // Pehla request: saare tenders
+      const tendersPromise = fetch(`${API_BASE_URL}/api/tenders`);
+
+      // Dusra request: sirf logged-in user ke bids (agar token hai)
+      const bidsPromise = token
+        ? fetch(`${API_BASE_URL}/api/bids/my-bids`, {
+            headers: { Authorization: `Bearer ${token}` },
+          })
+        : Promise.resolve({ ok: false });
+
       const [tendersRes, bidsRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/tenders`),
-        fetch(`${API_BASE_URL}/api/bids/my-bids`, {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        }).catch(() => ({ ok: false }))
+        tendersPromise,
+        bidsPromise,
       ]);
 
       if (tendersRes.ok) {
         const tenders = await tendersRes.json();
-        setStats(prev => ({ ...prev, tenders: tenders.length }));
+        setStats((prev) => ({ ...prev, tenders: tenders.length }));
       }
 
       if (bidsRes.ok) {
         const bids = await bidsRes.json();
-        setStats(prev => ({ ...prev, bids: bids.length }));
+        setStats((prev) => ({ ...prev, bids: bids.length }));
       }
+
+      // Users ke liye abhi backend endpoint nahi hai,
+      // isliye yaha 0 hi dikhayenge jab tak /users-count route nahi banate.
+      setStats((prev) => ({ ...prev, users: prev.users || 0 }));
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
+  };
+
+  // Common styles for stats (better visibility)
+  const statNumberStyle = {
+    color: '#FFD700', // gold
+    fontWeight: 700,
+    fontSize: '2.2rem',
+    textShadow: '0 1px 4px rgba(0,0,0,0.5)',
+  };
+
+  const statLabelStyle = {
+    color: 'rgba(255,255,255,0.9)',
+    fontWeight: 500,
   };
 
   return (
@@ -81,11 +114,23 @@ const LandingPage = () => {
               </div>
             </div>
             <ul className="nav-menu">
-              <li><a href="#home" className="active">Home</a></li>
-              <li><a href="#tenders">Active Tenders</a></li>
-              <li><a href="#about">About</a></li>
-              <li><a href="#help">Help</a></li>
-              <li><a href="#contact">Contact</a></li>
+              <li>
+                <a href="#home" className="active">
+                  Home
+                </a>
+              </li>
+              <li>
+                <a href="#tenders">Active Tenders</a>
+              </li>
+              <li>
+                <a href="#about">About</a>
+              </li>
+              <li>
+                <a href="#help">Help</a>
+              </li>
+              <li>
+                <a href="#contact">Contact</a>
+              </li>
             </ul>
           </div>
         </nav>
@@ -112,16 +157,28 @@ const LandingPage = () => {
             </div>
             <div className="hero-stats">
               <div className="stat-card">
-                <div className="stat-number">{stats.tenders}</div>
-                <div className="stat-label">Active Tenders</div>
+                <div className="stat-number" style={statNumberStyle}>
+                  {stats.tenders}
+                </div>
+                <div className="stat-label" style={statLabelStyle}>
+                  Active Tenders
+                </div>
               </div>
               <div className="stat-card">
-                <div className="stat-number">{stats.bids}</div>
-                <div className="stat-label">Total Bids</div>
+                <div className="stat-number" style={statNumberStyle}>
+                  {stats.bids}
+                </div>
+                <div className="stat-label" style={statLabelStyle}>
+                  Total Bids (for logged-in user)
+                </div>
               </div>
               <div className="stat-card">
-                <div className="stat-number">100%</div>
-                <div className="stat-label">Transparent</div>
+                <div className="stat-number" style={statNumberStyle}>
+                  {stats.users}
+                </div>
+                <div className="stat-label" style={statLabelStyle}>
+                  Total Users
+                </div>
               </div>
             </div>
           </div>
@@ -136,25 +193,33 @@ const LandingPage = () => {
                 <div className="icon">📋</div>
                 <h3>Tender Notices</h3>
                 <p>View latest tender announcements and requirements</p>
-                <Link to="/login" className="link-btn">View Tenders</Link>
+                <Link to="/login" className="link-btn">
+                  View Tenders
+                </Link>
               </div>
               <div className="quick-link-card">
                 <div className="icon">📝</div>
                 <h3>Submit Bid</h3>
                 <p>Participate in government tenders securely</p>
-                <Link to="/login" className="link-btn">Submit Bid</Link>
+                <Link to="/login" className="link-btn">
+                  Submit Bid
+                </Link>
               </div>
               <div className="quick-link-card">
                 <div className="icon">📊</div>
                 <h3>Track Status</h3>
                 <p>Monitor your bid status and tender progress</p>
-                <Link to="/login" className="link-btn">Track Status</Link>
+                <Link to="/login" className="link-btn">
+                  Track Status
+                </Link>
               </div>
               <div className="quick-link-card">
                 <div className="icon">📚</div>
                 <h3>Guidelines</h3>
                 <p>Read tender guidelines and procedures</p>
-                <a href="#guidelines" className="link-btn">View Guidelines</a>
+                <a href="#guidelines" className="link-btn">
+                  View Guidelines
+                </a>
               </div>
             </div>
           </div>
@@ -165,7 +230,8 @@ const LandingPage = () => {
           <div className="container">
             <h2>Latest Tender Opportunities</h2>
             <p className="section-desc">
-              Discover current government tender opportunities across various sectors
+              Discover current government tender opportunities across various
+              sectors
             </p>
             <div className="tenders-grid">
               <div className="tender-card">
@@ -179,7 +245,9 @@ const LandingPage = () => {
                   <span>Budget: ₹2.5 Cr</span>
                   <span>Deadline: 15 Dec 2024</span>
                 </div>
-                <Link to="/login" className="btn btn-outline">View Details</Link>
+                <Link to="/login" className="btn btn-outline">
+                  View Details
+                </Link>
               </div>
               <div className="tender-card">
                 <div className="tender-header">
@@ -192,7 +260,9 @@ const LandingPage = () => {
                   <span>Budget: ₹1.8 Cr</span>
                   <span>Deadline: 20 Dec 2024</span>
                 </div>
-                <Link to="/login" className="btn btn-outline">View Details</Link>
+                <Link to="/login" className="btn btn-outline">
+                  View Details
+                </Link>
               </div>
               <div className="tender-card">
                 <div className="tender-header">
@@ -200,12 +270,16 @@ const LandingPage = () => {
                   <span className="tender-status open">Open</span>
                 </div>
                 <h3>Medical Equipment Procurement</h3>
-                <p>Supply of advanced medical equipment to government hospitals</p>
+                <p>
+                  Supply of advanced medical equipment to government hospitals
+                </p>
                 <div className="tender-meta">
                   <span>Budget: ₹3.2 Cr</span>
                   <span>Deadline: 10 Jan 2025</span>
                 </div>
-                <Link to="/login" className="btn btn-outline">View Details</Link>
+                <Link to="/login" className="btn btn-outline">
+                  View Details
+                </Link>
               </div>
             </div>
             <div className="text-center" style={{ marginTop: '2rem' }}>
@@ -223,8 +297,9 @@ const LandingPage = () => {
               <div className="about-content">
                 <h2>About PublicTenderChain</h2>
                 <p>
-                  PublicTenderChain is India's first blockchain-powered government tender portal,
-                  designed to bring unprecedented transparency, security, and efficiency to public procurement.
+                  PublicTenderChain is India's first blockchain-powered
+                  government tender portal, designed to bring unprecedented
+                  transparency, security, and efficiency to public procurement.
                 </p>
                 <div className="features-list">
                   <div className="feature-item">
@@ -251,9 +326,7 @@ const LandingPage = () => {
                 </div>
               </div>
               <div className="about-image">
-                <div className="gov-building">
-                  🏛️
-                </div>
+                <div className="gov-building">🏛️</div>
               </div>
             </div>
           </div>
@@ -266,7 +339,9 @@ const LandingPage = () => {
             <div className="benefits-grid">
               <div className="benefit-card">
                 <h3>Blockchain Security</h3>
-                <p>Immutable ledger technology ensures data integrity and prevents fraud</p>
+                <p>
+                  Immutable ledger technology ensures data integrity and prevents fraud
+                </p>
               </div>
               <div className="benefit-card">
                 <h3>Real-time Tracking</h3>
@@ -286,7 +361,9 @@ const LandingPage = () => {
               </div>
               <div className="benefit-card">
                 <h3>Multi-language Support</h3>
-                <p>Available in multiple Indian languages for better accessibility</p>
+                <p>
+                  Available in multiple Indian languages for better accessibility
+                </p>
               </div>
             </div>
           </div>
@@ -300,20 +377,44 @@ const LandingPage = () => {
               <div className="news-card">
                 <div className="news-date">December 1, 2024</div>
                 <h3>New Tender Categories Added</h3>
-                <p>We have expanded our tender categories to include renewable energy and smart city projects.</p>
-                <button onClick={() => alert('Full article coming soon!')} className="read-more">Read More</button>
+                <p>
+                  We have expanded our tender categories to include renewable
+                  energy and smart city projects.
+                </p>
+                <button
+                  onClick={() => alert('Full article coming soon!')}
+                  className="read-more"
+                >
+                  Read More
+                </button>
               </div>
               <div className="news-card">
                 <div className="news-date">November 28, 2024</div>
                 <h3>System Maintenance Notice</h3>
-                <p>Scheduled maintenance on December 5th from 2 AM to 4 AM IST. Service may be temporarily unavailable.</p>
-                <button onClick={() => alert('Full article coming soon!')} className="read-more">Read More</button>
+                <p>
+                  Scheduled maintenance on December 5th from 2 AM to 4 AM IST.
+                  Service may be temporarily unavailable.
+                </p>
+                <button
+                  onClick={() => alert('Full article coming soon!')}
+                  className="read-more"
+                >
+                  Read More
+                </button>
               </div>
               <div className="news-card">
                 <div className="news-date">November 25, 2024</div>
                 <h3>Training Workshop Announced</h3>
-                <p>Free training sessions for contractors on using the new portal features.</p>
-                <button onClick={() => alert('Full article coming soon!')} className="read-more">Read More</button>
+                <p>
+                  Free training sessions for contractors on using the new portal
+                  features.
+                </p>
+                <button
+                  onClick={() => alert('Full article coming soon!')}
+                  className="read-more"
+                >
+                  Read More
+                </button>
               </div>
             </div>
           </div>
@@ -326,29 +427,69 @@ const LandingPage = () => {
           <div className="footer-grid">
             <div className="footer-section">
               <h3>PublicTenderChain</h3>
-              <p>Official Government Tender Portal powered by Blockchain Technology</p>
+              <p>
+                Official Government Tender Portal powered by Blockchain
+                Technology
+              </p>
               <div className="social-links">
-                <a href="https://facebook.com/govtenders" title="Facebook" target="_blank" rel="noopener noreferrer">📘</a>
-                <a href="https://twitter.com/govtenders" title="Twitter" target="_blank" rel="noopener noreferrer">🐦</a>
-                <a href="https://linkedin.com/company/govtenders" title="LinkedIn" target="_blank" rel="noopener noreferrer">💼</a>
+                <a
+                  href="https://facebook.com/govtenders"
+                  title="Facebook"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  📘
+                </a>
+                <a
+                  href="https://twitter.com/govtenders"
+                  title="Twitter"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  🐦
+                </a>
+                <a
+                  href="https://linkedin.com/company/govtenders"
+                  title="LinkedIn"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  💼
+                </a>
               </div>
             </div>
             <div className="footer-section">
               <h4>Quick Links</h4>
               <ul>
-                <li><a href="#tenders">Active Tenders</a></li>
-                <li><a href="#about">About Us</a></li>
-                <li><a href="#help">Help Center</a></li>
-                <li><a href="#contact">Contact Us</a></li>
+                <li>
+                  <a href="#tenders">Active Tenders</a>
+                </li>
+                <li>
+                  <a href="#about">About Us</a>
+                </li>
+                <li>
+                  <a href="#help">Help Center</a>
+                </li>
+                <li>
+                  <a href="#contact">Contact Us</a>
+                </li>
               </ul>
             </div>
             <div className="footer-section">
               <h4>Resources</h4>
               <ul>
-                <li><a href="#guidelines">Tender Guidelines</a></li>
-                <li><a href="#faq">FAQ</a></li>
-                <li><a href="#downloads">Downloads</a></li>
-                <li><a href="#api">API Documentation</a></li>
+                <li>
+                  <a href="#guidelines">Tender Guidelines</a>
+                </li>
+                <li>
+                  <a href="#faq">FAQ</a>
+                </li>
+                <li>
+                  <a href="#downloads">Downloads</a>
+                </li>
+                <li>
+                  <a href="#api">API Documentation</a>
+                </li>
               </ul>
             </div>
             <div className="footer-section">
@@ -363,16 +504,28 @@ const LandingPage = () => {
               © 2024 Government of India. All rights reserved.
             </div>
             <div className="footer-links">
-              <button onClick={() => alert('Privacy Policy - Coming Soon')}>Privacy Policy</button>
-              <button onClick={() => alert('Terms of Service - Coming Soon')}>Terms of Service</button>
-              <button onClick={() => alert('Accessibility - Coming Soon')}>Accessibility</button>
+              <button onClick={() => alert('Privacy Policy - Coming Soon')}>
+                Privacy Policy
+              </button>
+              <button onClick={() => alert('Terms of Service - Coming Soon')}>
+                Terms of Service
+              </button>
+              <button onClick={() => alert('Accessibility - Coming Soon')}>
+                Accessibility
+              </button>
             </div>
           </div>
         </div>
       </footer>
 
       {/* BACK TO TOP BUTTON */}
-      <button id="backToTop" title="Back to top" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>↑</button>
+      <button
+        id="backToTop"
+        title="Back to top"
+        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+      >
+        ↑
+      </button>
     </>
   );
 };

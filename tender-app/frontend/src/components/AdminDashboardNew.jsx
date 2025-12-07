@@ -8,6 +8,8 @@ const AdminDashboard = () => {
   const [tenders, setTenders] = useState([]);
   const [bids, setBids] = useState([]);
   const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeSection, setActiveSection] = useState('overview');
   const [user, setUser] = useState({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -22,6 +24,7 @@ const AdminDashboard = () => {
     }
     setUser(userData);
     fetchData();
+    fetchUsers();
   }, [navigate]);
 
   const fetchData = async () => {
@@ -46,16 +49,29 @@ const AdminDashboard = () => {
         setBids(bidsData);
       }
 
-      // Fetch users (assuming there's an endpoint for this)
-      // For now, we'll use mock data
-      setUsers([
-        { id: 1, name: 'John Contractor', company: 'ABC Ltd', email: 'john@example.com', status: 'Active' },
-        { id: 2, name: 'Jane Builder', company: 'XYZ Corp', email: 'jane@example.com', status: 'Active' },
-        { id: 3, name: 'Bob Engineer', company: 'Tech Solutions', email: 'bob@example.com', status: 'Blocked' }
-      ]);
-
     } catch (error) {
       console.error('Error fetching data:', error);
+    }
+  };
+
+  const fetchUsers = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/admin/users`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
+      } else {
+        setError(`Failed to fetch users: ${response.status} ${response.statusText}`);
+        console.error('Error fetching users:', response.status, response.statusText);
+      }
+    } catch (error) {
+      setError('Network error while fetching users');
+      console.error('Error fetching users:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -136,12 +152,62 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleUserAction = (userId, action) => {
-    // Mock user blocking/unblocking
-    setUsers(users.map(user =>
-      user.id === userId ? { ...user, status: action === 'block' ? 'Blocked' : 'Active' } : user
-    ));
-    alert(`User ${action}ed successfully!`);
+  const handleUserAction = async (userId) => {
+    try {
+      const token = localStorage.getItem('token');
+      console.log('Attempting to block/unblock user:', userId);
+      console.log('API URL:', `${API_BASE_URL}/api/auth/block-user/${userId}`);
+
+      const response = await fetch(`${API_BASE_URL}/api/auth/block-user/${userId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        }
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Success data:', data);
+        // Update the users state with the updated user data
+        setUsers(users.map(user =>
+          user._id === userId ? data.user : user
+        ));
+        alert(data.message);
+      } else {
+        const errorData = await response.json();
+        console.log('Error data:', errorData);
+        alert(`Failed to update user: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert('An error occurred while updating the user');
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this user permanently?")) return;
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/delete-user/${id}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`
+        }
+      });
+
+      if (res.ok) {
+        alert("User deleted successfully!");
+        setUsers(users.filter(u => u._id !== id)); // update UI
+      } else {
+        alert("Failed to delete user!");
+      }
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const menuItems = [
@@ -409,42 +475,55 @@ const AdminDashboard = () => {
               <th>Name</th>
               <th>Company</th>
               <th>Email</th>
+              <th>Registered On</th>
               <th>Status</th>
               <th>Actions</th>
             </tr>
           </thead>
           <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td>{user.name}</td>
-                <td>{user.company}</td>
-                <td>{user.email}</td>
-                <td>
-                  <span className={`status-badge ${user.status.toLowerCase()}`}>
-                    {user.status}
-                  </span>
-                </td>
-                <td>
-                  <div className="action-buttons">
-                    {user.status === 'Active' ? (
-                      <button
-                        className="btn btn-small btn-warning"
-                        onClick={() => handleUserAction(user.id, 'block')}
-                      >
-                        Block
-                      </button>
-                    ) : (
-                      <button
-                        className="btn btn-small btn-success"
-                        onClick={() => handleUserAction(user.id, 'unblock')}
-                      >
-                        Unblock
-                      </button>
-                    )}
-                  </div>
-                </td>
+            {loading ? (
+              <tr>
+                <td colSpan="6">Loading users...</td>
               </tr>
-            ))}
+            ) : error ? (
+              <tr>
+                <td colSpan="6">{error}</td>
+              </tr>
+            ) : users.length === 0 ? (
+              <tr>
+                <td colSpan="6">No registered users found.</td>
+              </tr>
+            ) : (
+              users.map((user) => (
+                <tr key={user._id}>
+                  <td>{user.name}</td>
+                  <td>{user.company || "-"}</td>
+                  <td>{user.email}</td>
+                  <td>{new Date(user.createdAt).toLocaleDateString("en-GB")}</td>
+                  <td>
+                    <span className={`status-badge ${!user.isBlocked ? 'active' : 'blocked'}`}>
+                      {!user.isBlocked ? 'ACTIVE' : 'BLOCKED'}
+                    </span>
+                  </td>
+                  <td>
+                    <div className="action-buttons">
+                      <button
+                        className={`btn btn-small ${user.isBlocked ? 'unblock-btn' : 'block-btn'}`}
+                        onClick={() => handleUserAction(user._id)}
+                      >
+                        {user.isBlocked ? 'Unblock' : 'Block'}
+                      </button>
+                      <button
+                        className="delete-btn"
+                        onClick={() => handleDelete(user._id)}
+                      >
+                        Delete ❌
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>
@@ -548,7 +627,7 @@ const AdminDashboard = () => {
               <span className="user-role">Administrator</span>
               <span className="user-name">{user.name || 'Admin User'}</span>
             </div>
-            <button className="btn btn-outline logout-btn" onClick={handleLogout}>
+            <button className="logout-btn" onClick={handleLogout}>
               Logout
             </button>
           </div>

@@ -2,6 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import '../styles.css';
 
+// imports ke baad:
+const API_BASE_URL =
+  process.env.REACT_APP_API_BASE_URL || "http://localhost:5000"; 
+// yaha pe tum apna backend URL dal sakte ho
+
+
 const LandingPage = () => {
   const [stats, setStats] = useState({ tenders: 0, bids: 0, users: 0 });
 

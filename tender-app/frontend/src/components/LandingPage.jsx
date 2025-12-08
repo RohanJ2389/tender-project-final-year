@@ -8,6 +8,7 @@ const API_BASE_URL =
 
 const LandingPage = () => {
   const [stats, setStats] = useState({ tenders: 0, bids: 0, users: 0 });
+  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     const backBtn = document.getElementById('backToTop');
@@ -84,6 +85,10 @@ const LandingPage = () => {
     }
   };
 
+  const toggleMenu = () => {
+    setMenuOpen(!menuOpen);
+  };
+
   return (
     <>
       {/* GOVERNMENT HEADER */}
@@ -115,7 +120,7 @@ const LandingPage = () => {
                 </div>
               </div>
             </div>
-            <ul className="nav-menu">
+            <ul className={`nav-menu ${menuOpen ? 'open' : ''}`}>
               <li>
                 <a href="#home" className="active">
                   Home
@@ -134,6 +139,11 @@ const LandingPage = () => {
                 <a href="#contact">Contact</a>
               </li>
             </ul>
+            <button className="hamburger" onClick={toggleMenu}>
+              <span></span>
+              <span></span>
+              <span></span>
+            </button>
           </div>
         </nav>
       </header>

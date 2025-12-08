@@ -248,6 +248,58 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleViewTender = (tenderId) => {
+    navigate(`/admin/tender/${tenderId}`);
+  };
+
+  const handleEditTender = (tenderId) => {
+    navigate(`/admin/tender/${tenderId}/edit`);
+  };
+
+  const handleCloseTender = async (tenderId) => {
+    if (!window.confirm('Are you sure you want to close this tender?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/tenders/${tenderId}/close`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        alert('Tender closed successfully!');
+        fetchData(); // Refresh tenders list
+      } else {
+        alert('Failed to close tender');
+      }
+    } catch (error) {
+      console.error('Error closing tender:', error);
+      alert('Network error while closing tender');
+    }
+  };
+
+  const handleDeleteTender = async (tenderId) => {
+    if (!window.confirm('Are you sure you want to permanently delete this tender?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/tenders/${tenderId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        alert('Tender deleted successfully!');
+        fetchData(); // Refresh tenders list
+      } else {
+        alert('Failed to delete tender');
+      }
+    } catch (error) {
+      console.error('Error deleting tender:', error);
+      alert('Network error while deleting tender');
+    }
+  };
+
   const menuItems = [
     { id: 'overview', label: 'Dashboard Overview', icon: '📊' },
     { id: 'create-tender', label: 'Create Tender', icon: '➕' },
@@ -426,10 +478,32 @@ const AdminDashboard = () => {
                 <td>{new Date(tender.deadline).toLocaleDateString()}</td>
                 <td>
                   <div className="action-buttons">
-                    <button className="btn btn-small btn-outline">View</button>
-                    <button className="btn btn-small btn-outline">Edit</button>
-                    <button className="btn btn-small btn-warning">Close</button>
-                    <button className="btn btn-small btn-danger">Delete</button>
+                    <button
+                      className="btn btn-small btn-outline"
+                      onClick={() => handleViewTender(tender._id)}
+                    >
+                      View
+                    </button>
+                    <button
+                      className="btn btn-small btn-outline"
+                      onClick={() => handleEditTender(tender._id)}
+                    >
+                      Edit
+                    </button>
+                    {tender.status !== 'closed' && (
+                      <button
+                        className="btn btn-small btn-warning"
+                        onClick={() => handleCloseTender(tender._id)}
+                      >
+                        Close
+                      </button>
+                    )}
+                    <button
+                      className="btn btn-small btn-danger"
+                      onClick={() => handleDeleteTender(tender._id)}
+                    >
+                      Delete
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -505,14 +579,17 @@ const AdminDashboard = () => {
 
     return (
       <div className="dashboard-content">
+        {/* Page header with improved typography */}
         <div className="content-header">
           <h1>Registered Users</h1>
           <p>Manage registered contractors and users</p>
         </div>
 
-        <div className="table-container">
-          <table className="gov-table">
-            <thead>
+        {/* Centered white card container with max-width 1200px, rounded corners, shadow, and padding */}
+        <div className="users-table-card">
+          {/* Table with improved spacing, sticky header, and animations */}
+          <table className="users-table">
+            <thead className="users-table-header">
               <tr>
                 <th>Name</th>
                 <th>Company</th>
@@ -526,19 +603,19 @@ const AdminDashboard = () => {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6">Loading users...</td>
+                  <td colSpan="7" className="loading-cell">Loading users...</td>
                 </tr>
               ) : error ? (
                 <tr>
-                  <td colSpan="6">{error}</td>
+                  <td colSpan="7" className="error-cell">{error}</td>
                 </tr>
               ) : visibleUsers.length === 0 ? (
                 <tr>
-                  <td colSpan="7">No registered users found.</td>
+                  <td colSpan="7" className="empty-cell">No registered users found.</td>
                 </tr>
               ) : (
                 visibleUsers.map((user) => (
-                  <tr key={user._id}>
+                  <tr key={user._id} className="users-table-row">
                     <td>{user.name}</td>
                     <td>{user.company || "-"}</td>
                     <td>{user.email}</td>
@@ -554,33 +631,42 @@ const AdminDashboard = () => {
                       </span>
                     </td>
                     <td>
-                      <div className="action-buttons">
+                      {/* Action buttons with icons, consistent min-height 44px, and hover animations */}
+                      <div className="users-action-buttons">
                         {user.role !== 'admin' ? (
                           <button
-                            className="make-admin-btn"
+                            className="btn-make-admin"
                             onClick={() => handleRoleChange(user._id, 'admin')}
+                            title="Make Admin"
                           >
+                            <span className="btn-icon">👑</span>
                             Make Admin
                           </button>
                         ) : (
                           <button
-                            className="remove-admin-btn"
+                            className="btn-remove-admin"
                             onClick={() => handleRoleChange(user._id, 'user')}
+                            title="Remove Admin"
                           >
+                            <span className="btn-icon">👤</span>
                             Remove Admin
                           </button>
                         )}
                         <button
-                          className={`btn btn-small ${user.isBlocked ? 'unblock-btn' : 'block-btn'}`}
+                          className={`btn-block ${user.isBlocked ? 'btn-unblock' : ''}`}
                           onClick={() => handleUserAction(user._id)}
+                          title={user.isBlocked ? 'Unblock User' : 'Block User'}
                         >
+                          <span className="btn-icon">{user.isBlocked ? '🔓' : '🔒'}</span>
                           {user.isBlocked ? 'Unblock' : 'Block'}
                         </button>
                         <button
-                          className="delete-btn"
+                          className="btn-delete"
                           onClick={() => handleDelete(user._id)}
+                          title="Delete User"
                         >
-                          Delete ❌
+                          <span className="btn-icon">🗑️</span>
+                          Delete
                         </button>
                       </div>
                     </td>

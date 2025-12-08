@@ -2,6 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const Bid = require('../models/Bid');
+const Notification = require('../models/Notification');
 const { authenticateToken } = require('./auth');
 
 // POST /api/bids - Place a new bid
@@ -12,6 +13,14 @@ router.post('/', authenticateToken, async (req, res) => {
 
     if (!tenderId || !amount) {
       return res.status(400).json({ msg: 'Missing required fields' });
+    }
+
+    // Check if user has already bid on this tender
+    const existingBid = await Bid.findOne({ tenderId, bidderId });
+    if (existingBid) {
+      return res.status(400).json({
+        msg: 'You have already submitted a bid for this tender. You can only submit one bid per tender.'
+      });
     }
 
     const bid = new Bid({
@@ -44,14 +53,58 @@ router.get('/tender/:tenderId', async (req, res) => {
   }
 });
 
-// GET /api/bids/my-bids - Get all bids for the authenticated user
+// GET /api/bids/my-bids - Get all bids for the authenticated user with filters
 router.get('/my-bids', authenticateToken, async (req, res) => {
   try {
     const userId = req.user.userId; // JWT payload has userId
+    const { search, status, sort, from, to } = req.query;
 
-    const bids = await Bid.find({ bidderId: userId })
+    let query = { bidderId: userId };
+
+    // Status filter
+    if (status && status !== 'all') {
+      query.status = status;
+    }
+
+    // Date range filter
+    if (from || to) {
+      query.createdAt = {};
+      if (from) query.createdAt.$gte = new Date(from);
+      if (to) query.createdAt.$lte = new Date(to);
+    }
+
+    let bids = await Bid.find(query)
       .populate('tenderId', 'title')
       .sort({ createdAt: -1 });
+
+    // Search filter (on tender title)
+    if (search) {
+      const searchRegex = new RegExp(search, 'i');
+      bids = bids.filter(bid =>
+        bid.tenderId && bid.tenderId.title && searchRegex.test(bid.tenderId.title)
+      );
+    }
+
+    // Sort options
+    if (sort) {
+      switch (sort) {
+        case 'newest':
+          bids.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          break;
+        case 'oldest':
+          bids.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+          break;
+        case 'highest':
+          bids.sort((a, b) => b.amount - a.amount);
+          break;
+        case 'lowest':
+          bids.sort((a, b) => a.amount - b.amount);
+          break;
+        default:
+          // Keep default sort (newest first)
+          break;
+      }
+    }
 
     res.json(bids);
   } catch (error) {
@@ -70,6 +123,9 @@ router.put('/:bidId', authenticateToken, async (req, res) => {
       return res.status(400).json({ msg: 'Invalid status' });
     }
 
+    // Get the bid before updating to check if status changed
+    const oldBid = await Bid.findById(bidId).populate('tenderId', 'title').populate('bidderId', 'name email');
+
     const bid = await Bid.findByIdAndUpdate(
       bidId,
       { status },
@@ -78,6 +134,34 @@ router.put('/:bidId', authenticateToken, async (req, res) => {
 
     if (!bid) {
       return res.status(404).json({ msg: 'Bid not found' });
+    }
+
+    // Create notification if status changed
+    if (oldBid && oldBid.status !== status) {
+      let title, message;
+      const tenderTitle = bid.tenderId?.title || 'Tender';
+
+      switch (status) {
+        case 'accepted':
+          title = 'Bid Approved';
+          message = `Congratulations! Your bid for "${tenderTitle}" has been approved.`;
+          break;
+        case 'rejected':
+          title = 'Bid Rejected';
+          message = `Your bid for "${tenderTitle}" has been rejected.`;
+          break;
+        default:
+          title = 'Bid Status Updated';
+          message = `Your bid status for "${tenderTitle}" has been updated to ${status}.`;
+      }
+
+      // Create notification for the bidder
+      await Notification.create({
+        user: bid.bidderId._id,
+        title,
+        message,
+        type: 'bid_status'
+      });
     }
 
     res.json({

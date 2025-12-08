@@ -27,7 +27,7 @@ router.post('/register', async (req, res) => {
       name,
       email,
       password, // plain password — hooks will hash automatically
-      role: 'public'
+      role: 'user' // hard-coded for public registration
     });
 
     await newUser.save(); // Ensure hashing completes before response
@@ -77,6 +77,10 @@ router.post('/login', async (req, res) => {
     if (!isMatch) {
       console.log('Login failed: password mismatch for', email);
       return res.status(401).json({ message: 'Invalid credentials (wrong password)' });
+    }
+
+    if (user.isBlocked) {
+      return res.status(403).json({ message: 'Your account has been blocked by the administrator.' });
     }
 
     // Generate JWT token
@@ -136,14 +140,37 @@ const requireAdmin = (req, res, next) => {
 // -------------------------------------------
 router.put('/block-user/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id);
+    const targetUserId = req.params.id;
+    const loggedInUserId = req.user.userId;
+
+    console.log('Block/unblock request:', { targetUserId, loggedInUserId });
+
+    // Prevent blocking yourself
+    if (targetUserId === loggedInUserId) {
+      console.log('Attempted to block self, rejecting');
+      return res.status(400).json({ message: "Cannot block yourself" });
+    }
+
+    const user = await User.findById(targetUserId);
     if (!user) {
+      console.log('User not found:', targetUserId);
       return res.status(404).json({ message: "User not found" });
+    }
+
+    console.log('Target user found:', { email: user.email, isSuperAdmin: user.isSuperAdmin, isBlocked: user.isBlocked });
+
+    // Prevent modifying super admin
+    if (user.isSuperAdmin) {
+      console.log('Attempted to modify super admin, rejecting');
+      return res.status(403).json({ message: "Cannot modify Super Admin" });
     }
 
     // Toggle the isBlocked status
     user.isBlocked = !user.isBlocked;
+    console.log('Toggling block status to:', user.isBlocked);
+
     await user.save();
+    console.log('User saved successfully');
 
     // Return user without password
     const { password, ...userWithoutPassword } = user.toObject();
@@ -154,6 +181,7 @@ router.put('/block-user/:id', authenticateToken, requireAdmin, async (req, res) 
     });
   } catch (error) {
     console.error('Block/unblock error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 });
@@ -163,13 +191,70 @@ router.put('/block-user/:id', authenticateToken, requireAdmin, async (req, res) 
 // -------------------------------------------
 router.delete('/delete-user/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
-    const user = await User.findByIdAndDelete(req.params.id);
+    const targetUserId = req.params.id;
+    const loggedInUserId = req.user.userId;
+
+    // Prevent deleting yourself
+    if (targetUserId === loggedInUserId) {
+      return res.status(400).json({ message: "Cannot delete yourself" });
+    }
+
+    const user = await User.findById(targetUserId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+
+    // Prevent deleting super admin
+    if (user.isSuperAdmin) {
+      return res.status(403).json({ message: "Cannot modify Super Admin" });
+    }
+
+    await User.findByIdAndDelete(targetUserId);
     res.json({ message: "User deleted successfully" });
   } catch (error) {
-    res.status(500).json({ message: "Server error" });
+    console.error('Delete user error:', error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+});
+
+// -------------------------------------------
+// UPDATE USER ROLE (Admin only)
+// -------------------------------------------
+router.put('/users/:id/role', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { role } = req.body;
+
+    if (!role || !['admin', 'user'].includes(role)) {
+      return res.status(400).json({ message: "Invalid role. Must be 'admin' or 'user'" });
+    }
+
+    const user = await User.findById(req.params.id);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Prevent modifying super admin
+    if (user.isSuperAdmin) {
+      return res.status(403).json({ message: "Cannot modify Super Admin" });
+    }
+
+    // Do NOT allow changing the "super admin" user (admin@gmail.com) to non-admin
+    if (user.email === 'admin@gmail.com' && role !== 'admin') {
+      return res.status(403).json({ message: "Cannot demote super admin" });
+    }
+
+    user.role = role;
+    await user.save();
+
+    // Return sanitized user data (without password)
+    const { password, ...userWithoutPassword } = user.toObject();
+    res.json({
+      success: true,
+      user: userWithoutPassword
+    });
+  } catch (error) {
+    console.error('Role update error:', error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 

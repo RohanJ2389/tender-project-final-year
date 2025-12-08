@@ -127,7 +127,7 @@ const AdminDashboard = () => {
     try {
       const token = localStorage.getItem('token');
       const bidData = {
-        status: action === 'approved' ? 'approved' : 'rejected'
+        status: action === 'approved' ? 'accepted' : 'rejected'
       };
       const response = await fetch(`${API_BASE_URL}/api/bids/${bidId}`, {
         method: 'PUT',
@@ -144,11 +144,20 @@ const AdminDashboard = () => {
       } else {
         const errorData = await response.json();
         console.error('Failed to update bid status:', errorData);
-        alert(`Failed to update bid status: ${errorData.message || 'Unknown error'}`);
+        const msg =
+          errorData.msg ||
+          errorData.message ||
+          'Failed to update bid status';
+        alert(msg);
       }
     } catch (error) {
       console.error('Error updating bid:', error);
-      alert('An error occurred while updating the bid');
+      const msg =
+        error.response?.data?.msg ||
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to update bid status';
+      alert(msg);
     }
   };
 
@@ -207,6 +216,35 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  const handleRoleChange = async (userId, newRole) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/admin/users/${userId}/role`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ role: newRole })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update the users state with the updated user data
+        setUsers(users.map(user =>
+          user._id === userId ? data.user : user
+        ));
+        alert(data.message);
+      } else {
+        const errorData = await response.json();
+        alert(`Failed to update user role: ${errorData.message || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      alert('An error occurred while updating the user role');
     }
   };
 
@@ -425,7 +463,7 @@ const AdminDashboard = () => {
             {bids.map((bid) => (
               <tr key={bid._id}>
                 <td>{bid.tenderId?.title || 'N/A'}</td>
-                <td>{bid.userId?.name || 'Anonymous'}</td>
+                <td>{bid.bidderId?.name || 'Anonymous'}</td>
                 <td>₹{bid.amount}</td>
                 <td>{new Date(bid.createdAt).toLocaleDateString()}</td>
                 <td>
@@ -461,74 +499,100 @@ const AdminDashboard = () => {
     </div>
   );
 
-  const renderUsers = () => (
-    <div className="dashboard-content">
-      <div className="content-header">
-        <h1>Registered Users</h1>
-        <p>Manage registered contractors and users</p>
-      </div>
+  const renderUsers = () => {
+    // Filter out super admin users for normal admins
+    const visibleUsers = users.filter(u => !u.isSuperAdmin);
 
-      <div className="table-container">
-        <table className="gov-table">
-          <thead>
-            <tr>
-              <th>Name</th>
-              <th>Company</th>
-              <th>Email</th>
-              <th>Registered On</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+    return (
+      <div className="dashboard-content">
+        <div className="content-header">
+          <h1>Registered Users</h1>
+          <p>Manage registered contractors and users</p>
+        </div>
+
+        <div className="table-container">
+          <table className="gov-table">
+            <thead>
               <tr>
-                <td colSpan="6">Loading users...</td>
+                <th>Name</th>
+                <th>Company</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Registered On</th>
+                <th>Status</th>
+                <th>Actions</th>
               </tr>
-            ) : error ? (
-              <tr>
-                <td colSpan="6">{error}</td>
-              </tr>
-            ) : users.length === 0 ? (
-              <tr>
-                <td colSpan="6">No registered users found.</td>
-              </tr>
-            ) : (
-              users.map((user) => (
-                <tr key={user._id}>
-                  <td>{user.name}</td>
-                  <td>{user.company || "-"}</td>
-                  <td>{user.email}</td>
-                  <td>{new Date(user.createdAt).toLocaleDateString("en-GB")}</td>
-                  <td>
-                    <span className={`status-badge ${!user.isBlocked ? 'active' : 'blocked'}`}>
-                      {!user.isBlocked ? 'ACTIVE' : 'BLOCKED'}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="action-buttons">
-                      <button
-                        className={`btn btn-small ${user.isBlocked ? 'unblock-btn' : 'block-btn'}`}
-                        onClick={() => handleUserAction(user._id)}
-                      >
-                        {user.isBlocked ? 'Unblock' : 'Block'}
-                      </button>
-                      <button
-                        className="delete-btn"
-                        onClick={() => handleDelete(user._id)}
-                      >
-                        Delete ❌
-                      </button>
-                    </div>
-                  </td>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="6">Loading users...</td>
                 </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+              ) : error ? (
+                <tr>
+                  <td colSpan="6">{error}</td>
+                </tr>
+              ) : visibleUsers.length === 0 ? (
+                <tr>
+                  <td colSpan="7">No registered users found.</td>
+                </tr>
+              ) : (
+                visibleUsers.map((user) => (
+                  <tr key={user._id}>
+                    <td>{user.name}</td>
+                    <td>{user.company || "-"}</td>
+                    <td>{user.email}</td>
+                    <td>
+                      <span className={`role-badge ${user.role}`}>
+                        {user.isSuperAdmin ? 'Super Administrator' : user.role === 'admin' ? 'Administrator' : 'User'}
+                      </span>
+                    </td>
+                    <td>{new Date(user.createdAt).toLocaleDateString("en-GB")}</td>
+                    <td>
+                      <span className={`status-badge ${!user.isBlocked ? 'active' : 'blocked'}`}>
+                        {!user.isBlocked ? 'ACTIVE' : 'BLOCKED'}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="action-buttons">
+                        {user.role !== 'admin' ? (
+                          <button
+                            className="make-admin-btn"
+                            onClick={() => handleRoleChange(user._id, 'admin')}
+                          >
+                            Make Admin
+                          </button>
+                        ) : (
+                          <button
+                            className="remove-admin-btn"
+                            onClick={() => handleRoleChange(user._id, 'user')}
+                          >
+                            Remove Admin
+                          </button>
+                        )}
+                        <button
+                          className={`btn btn-small ${user.isBlocked ? 'unblock-btn' : 'block-btn'}`}
+                          onClick={() => handleUserAction(user._id)}
+                        >
+                          {user.isBlocked ? 'Unblock' : 'Block'}
+                        </button>
+                        <button
+                          className="delete-btn"
+                          onClick={() => handleDelete(user._id)}
+                        >
+                          Delete ❌
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderReports = () => (
     <div className="dashboard-content">

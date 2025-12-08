@@ -1,28 +1,54 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './PublicDashboardExtra.css';
+import './FilterStyles.css';
 import API_BASE_URL from '../api';
+import BidStatusChart from './BidStatusChart';
+import PublicBidStats from './PublicBidStats';
+import NotificationBell from './NotificationBell';
 
 const PublicDashboard = () => {
   const navigate = useNavigate();
   const [tenders, setTenders] = useState([]);
   const [bids, setBids] = useState([]);
+  const [bidStats, setBidStats] = useState({
+    totalBids: 0,
+    approvedBids: 0,
+    rejectedBids: 0,
+    pendingBids: 0
+  });
   const [activeSection, setActiveSection] = useState('overview');
   const [user, setUser] = useState({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [selectedTender, setSelectedTender] = useState(null);
+  const [showModal, setShowModal] = useState(false);
+
+  // My Bids filters
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [sortBy, setSortBy] = useState('newest');
+  const [clearTrigger, setClearTrigger] = useState(0);
 
   useEffect(() => {
     // Check authentication
     const token = localStorage.getItem('token');
     const userData = JSON.parse(localStorage.getItem('user') || '{}');
-    if (!token || userData.role !== 'public') {
+    if (!token || !userData.role) {
       navigate('/login');
       return;
     }
     setUser(userData);
     fetchTenders();
     fetchBids();
-  }, [navigate]);
+    fetchBidStats();
+  }, [navigate]); // Include navigate in dependencies
+
+  // Force re-render when clearTrigger changes
+  useEffect(() => {
+    // This effect ensures the component re-renders when filters are cleared
+  }, [clearTrigger]);
 
   const fetchTenders = async () => {
     try {
@@ -54,6 +80,26 @@ const PublicDashboard = () => {
     }
   };
 
+  const fetchBidStats = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/public/bids/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setBidStats({
+          totalBids: data.totalBids || 0,
+          approvedBids: data.approvedBids || 0,
+          rejectedBids: data.rejectedBids || 0,
+          pendingBids: data.pendingBids || 0
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching bid stats:', error);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -72,7 +118,7 @@ const PublicDashboard = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:3000/api/bids', {
+      const response = await fetch(`${API_BASE_URL}/api/bids`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -84,10 +130,11 @@ const PublicDashboard = () => {
       if (response.ok) {
         alert('Bid submitted successfully!');
         fetchBids();
+        fetchBidStats();
       } else {
         const errorData = await response.json();
         console.error('Failed to submit bid:', errorData);
-        alert(`Failed to submit bid: ${errorData.message || 'You may have already bid on this tender.'}`);
+        alert(`Failed to submit bid: ${errorData.msg || errorData.message || 'Unknown error occurred'}`);
       }
     } catch (error) {
       console.error('Error submitting bid:', error);
@@ -104,28 +151,40 @@ const PublicDashboard = () => {
   ];
 
   const renderOverview = () => (
-    <div className="public-dashboard-content">
+    <div className="public-dashboard-container">
       {/* Welcome Banner */}
       <div className="welcome-banner">
         <div className="banner-content">
           <h1>Welcome to GovTender Portal</h1>
           <p>Access government tenders, submit bids, and track your applications</p>
           <div className="banner-stats">
-            <div className="stat-item">
+            <div className="banner-stat-card">
               <span className="stat-number">{tenders.length}</span>
               <span className="stat-text">Active Tenders</span>
             </div>
-            <div className="stat-item">
+            <div className="banner-stat-card">
               <span className="stat-number">{bids.length}</span>
               <span className="stat-text">Your Bids</span>
             </div>
-            <div className="stat-item">
+            <div className="banner-stat-card">
               <span className="stat-number">{bids.filter(b => b.status === 'approved').length}</span>
               <span className="stat-text">Approved</span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Analytics Section */}
+      <section className="dashboard-analytics">
+        <div className="analytics-grid">
+          <PublicBidStats stats={bidStats} />
+          <BidStatusChart
+            approved={bidStats.approvedBids}
+            rejected={bidStats.rejectedBids}
+            pending={bidStats.pendingBids}
+          />
+        </div>
+      </section>
 
       {/* Quick Actions */}
       <div className="dashboard-section">
@@ -212,7 +271,15 @@ const PublicDashboard = () => {
               </div>
             </div>
             <div className="tender-actions">
-              <button className="btn btn-outline btn-small">View Details</button>
+              <button
+                className="btn btn-outline btn-small"
+                onClick={() => {
+                  setSelectedTender(tender);
+                  setShowModal(true);
+                }}
+              >
+                View Details
+              </button>
               <button
                 className="btn btn-primary btn-small"
                 onClick={() => handleBid(tender._id)}
@@ -234,56 +301,164 @@ const PublicDashboard = () => {
     </div>
   );
 
-  const renderMyBids = () => (
-    <div className="public-dashboard-content">
-      <div className="content-header">
-        <h1>My Bids</h1>
-        <p>Track the status of all your submitted bids</p>
-      </div>
+  const renderMyBids = () => {
+    // Filter and sort bids
+    const filteredBids = bids.filter((bid) => {
+      const matchesSearch = searchTerm === '' ||
+        bid.tenderId?.title?.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === 'All' || bid.status === statusFilter.toLowerCase();
+      const bidDate = new Date(bid.createdAt);
+      const matchesDateFrom = !dateFrom || bidDate >= new Date(dateFrom);
+      const matchesDateTo = !dateTo || bidDate <= new Date(dateTo);
+      return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo;
+    }).sort((a, b) => {
+      switch (sortBy) {
+        case 'newest':
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        case 'oldest':
+          return new Date(a.createdAt) - new Date(b.createdAt);
+        case 'highest':
+          return b.amount - a.amount;
+        case 'lowest':
+          return a.amount - b.amount;
+        default:
+          return 0;
+      }
+    });
 
-      <div className="bids-table-container">
-        <table className="gov-table">
-          <thead>
-            <tr>
-              <th>Tender Title</th>
-              <th>Bid Amount</th>
-              <th>Submission Date</th>
-              <th>Status</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {bids.map((bid) => (
-              <tr key={bid._id}>
-                <td>{bid.tenderId?.title || 'N/A'}</td>
-                <td>₹{bid.amount.toLocaleString()}</td>
-                <td>{new Date(bid.createdAt).toLocaleDateString()}</td>
-                <td>
-                  <span className={`status-badge ${bid.status || 'pending'}`}>
-                    {bid.status || 'Pending'}
-                  </span>
-                </td>
-                <td>
-                  <button className="btn btn-small btn-outline">View Details</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {bids.length === 0 && (
-        <div className="empty-state">
-          <div className="empty-icon">💰</div>
-          <h3>No Bids Submitted</h3>
-          <p>You haven't submitted any bids yet. Browse active tenders to get started.</p>
-          <button className="btn btn-primary" onClick={() => setActiveSection('tenders')}>
-            Browse Tenders
-          </button>
+    return (
+      <div className="public-dashboard-content">
+        <div className="content-header">
+          <h1>My Bids</h1>
+          <p>Track the status of all your submitted bids</p>
         </div>
-      )}
-    </div>
-  );
+
+        {/* Filters Section */}
+        <div className="dashboard-section">
+          <h2>Filters & Search</h2>
+          <div className="filters-grid">
+            <div className="filter-item">
+              <label>Search by Tender Title:</label>
+              <input
+                type="text"
+                placeholder="Enter tender title..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="filter-input"
+              />
+            </div>
+            <div className="filter-item">
+              <label>Status:</label>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="filter-select"
+              >
+                <option value="All">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
+            </div>
+            <div className="filter-item">
+              <label>From Date:</label>
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => setDateFrom(e.target.value)}
+                className="filter-input"
+              />
+            </div>
+            <div className="filter-item">
+              <label>To Date:</label>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => setDateTo(e.target.value)}
+                className="filter-input"
+              />
+            </div>
+            <div className="filter-item">
+              <label>Sort By:</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="filter-select"
+              >
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
+                <option value="highest">Highest Amount</option>
+                <option value="lowest">Lowest Amount</option>
+              </select>
+            </div>
+          </div>
+          <div className="filter-results">
+            Showing {filteredBids.length} of {bids.length} bids
+          </div>
+        </div>
+
+        <div className="bids-table-container">
+          <table className="gov-table">
+            <thead>
+              <tr>
+                <th>Tender Title</th>
+                <th>Bid Amount</th>
+                <th>Submission Date</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredBids.map((bid) => (
+                <tr key={bid._id}>
+                  <td>{bid.tenderId?.title || 'N/A'}</td>
+                  <td>₹{bid.amount.toLocaleString()}</td>
+                  <td>{new Date(bid.createdAt).toLocaleDateString()}</td>
+                  <td>
+                    <span className={`status-badge ${bid.status || 'pending'}`}>
+                      {bid.status || 'Pending'}
+                    </span>
+                  </td>
+                  <td>
+                    <button className="btn btn-small btn-outline">View Details</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {filteredBids.length === 0 && bids.length > 0 && (
+          <div className="empty-state">
+            <div className="empty-icon">🔍</div>
+            <h3>No Bids Match Your Filters</h3>
+            <p>Try adjusting your search criteria or filters to see more results.</p>
+            <button className="btn btn-outline" onClick={() => {
+              setSearchTerm('');
+              setStatusFilter('All');
+              setDateFrom('');
+              setDateTo('');
+              setSortBy('newest');
+              setClearTrigger(prev => prev + 1);
+            }}>
+              Clear Filters
+            </button>
+          </div>
+        )}
+
+        {bids.length === 0 && (
+          <div className="empty-state">
+            <div className="empty-icon">💰</div>
+            <h3>No Bids Submitted</h3>
+            <p>You haven't submitted any bids yet. Browse active tenders to get started.</p>
+            <button className="btn btn-primary" onClick={() => setActiveSection('tenders')}>
+              Browse Tenders
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderGovernmentSchemes = () => (
     <div className="public-dashboard-content">
@@ -404,6 +579,7 @@ const PublicDashboard = () => {
             </div>
           </div>
           <div className="public-header-right">
+            <NotificationBell />
             <div className="public-user-info">
               <span className="public-user-role">Public User</span>
               <span className="public-user-name">{user.name || 'Citizen'}</span>
@@ -479,6 +655,50 @@ const PublicDashboard = () => {
           </div>
         </div>
       </section>
+
+      {/* Tender Details Modal */}
+      {showModal && selectedTender && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">{selectedTender.title}</h2>
+              <button className="modal-close" onClick={() => setShowModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div className="modal-description">
+                <strong>Description:</strong> {selectedTender.description}
+              </div>
+              <div className="modal-detail">
+                <strong>Department:</strong> {selectedTender.department || 'General'}
+              </div>
+              <div className="modal-detail">
+                <strong>Budget:</strong> ₹{selectedTender.budget.toLocaleString()}
+              </div>
+              <div className="modal-detail">
+                <strong>Deadline:</strong> {new Date(selectedTender.deadline).toLocaleDateString()}
+              </div>
+              <div className="modal-detail">
+                <strong>Status:</strong> {selectedTender.status || 'Open'}
+              </div>
+              <div className="modal-detail">
+                <strong>Created:</strong> {new Date(selectedTender.createdAt).toLocaleDateString()}
+              </div>
+            </div>
+            <div className="modal-actions">
+              <button className="btn btn-outline" onClick={() => setShowModal(false)}>Close</button>
+              <button
+                className="btn btn-primary"
+                onClick={() => {
+                  setShowModal(false);
+                  handleBid(selectedTender._id);
+                }}
+              >
+                Place Bid
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

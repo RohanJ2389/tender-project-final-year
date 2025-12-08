@@ -6,7 +6,7 @@ import API_BASE_URL from '../api';
 
 const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
-  const [loginData, setLoginData] = useState({ email: '', password: '', role: 'public' });
+  const [loginData, setLoginData] = useState({ email: '', password: '' });
   const [registerData, setRegisterData] = useState({ name: '', email: '', password: '' });
   const navigate = useNavigate();
 
@@ -129,38 +129,6 @@ const Login = () => {
                   </div>
 
                   <form onSubmit={handleLogin} className="gov-login-form">
-                    <div className="role-selection">
-                      <label className="role-label">Select User Type:</label>
-                      <div className="role-options">
-                        <label className="role-option">
-                          <input
-                            type="radio"
-                            name="role"
-                            value="admin"
-                            checked={loginData.role === 'admin'}
-                            onChange={(e) => setLoginData({ ...loginData, role: e.target.value })}
-                          />
-                          <span className="role-text">
-                            <strong>Government Administrator</strong>
-                            <small>Department Officials</small>
-                          </span>
-                        </label>
-                        <label className="role-option">
-                          <input
-                            type="radio"
-                            name="role"
-                            value="public"
-                            checked={loginData.role === 'public'}
-                            onChange={(e) => setLoginData({ ...loginData, role: e.target.value })}
-                          />
-                          <span className="role-text">
-                            <strong>Contractor / Public User</strong>
-                            <small>Bidders & Contractors</small>
-                          </span>
-                        </label>
-                      </div>
-                    </div>
-
                     <div className="form-group">
                       <label htmlFor="login-email" className="gov-label">
                         Email Address *

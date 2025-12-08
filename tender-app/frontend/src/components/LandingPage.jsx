@@ -16,19 +16,37 @@ const LandingPage = () => {
     if (backBtn) {
       handleScroll = () => {
         const pos = window.scrollY || document.documentElement.scrollTop;
-        backBtn.style.display = pos > 200 ? 'block' : 'none';
+        backBtn.style.display = pos > 200 ? 'flex' : 'none';
       };
       window.addEventListener('scroll', handleScroll);
     }
 
-    // ✅ Hamesha stats fetch karo (scroll button se alag)
+    // Fetch stats
     fetchStats();
 
-    // Cleanup
+    // Scroll reveal animation
+    const observerOptions = {
+      threshold: 0.1,
+      rootMargin: '0px 0px -50px 0px',
+    };
+
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('animate-in');
+        }
+      });
+    }, observerOptions);
+
+    document.querySelectorAll('.scroll-reveal').forEach((el) => {
+      observer.observe(el);
+    });
+
     return () => {
       if (backBtn && handleScroll) {
         window.removeEventListener('scroll', handleScroll);
       }
+      observer.disconnect();
     };
   }, []);
 
@@ -36,10 +54,8 @@ const LandingPage = () => {
     try {
       const token = localStorage.getItem('token');
 
-      // Pehla request: saare tenders
       const tendersPromise = fetch(`${API_BASE_URL}/api/tenders`);
 
-      // Dusra request: sirf logged-in user ke bids (agar token hai)
       const bidsPromise = token
         ? fetch(`${API_BASE_URL}/api/bids/my-bids`, {
             headers: { Authorization: `Bearer ${token}` },
@@ -61,25 +77,11 @@ const LandingPage = () => {
         setStats((prev) => ({ ...prev, bids: bids.length }));
       }
 
-      // Users ke liye abhi backend endpoint nahi hai,
-      // isliye yaha 0 hi dikhayenge jab tak /users-count route nahi banate.
+      // You can later replace this with a real users count API
       setStats((prev) => ({ ...prev, users: prev.users || 0 }));
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
-  };
-
-  // Common styles for stats (better visibility)
-  const statNumberStyle = {
-    color: '#FFD700', // gold
-    fontWeight: 700,
-    fontSize: '2.2rem',
-    textShadow: '0 1px 4px rgba(0,0,0,0.5)',
-  };
-
-  const statLabelStyle = {
-    color: 'rgba(255,255,255,0.9)',
-    fontWeight: 500,
   };
 
   return (
@@ -147,77 +149,86 @@ const LandingPage = () => {
                 Powered by Blockchain Technology
               </p>
               <div className="hero-actions">
-                <Link to="/login" className="btn btn-primary btn-large">
+                <Link to="/login" className="btn btn-primary">
                   Access Portal
                 </Link>
-                <a href="#tenders" className="btn btn-secondary btn-large">
+                <a href="#tenders" className="btn btn-secondary">
                   View Active Tenders
                 </a>
               </div>
             </div>
-            <div className="hero-stats">
-              <div className="stat-card">
-                <div className="stat-number" style={statNumberStyle}>
-                  {stats.tenders}
-                </div>
-                <div className="stat-label" style={statLabelStyle}>
-                  Active Tenders
-                </div>
-              </div>
-              <div className="stat-card">
-                <div className="stat-number" style={statNumberStyle}>
-                  {stats.bids}
-                </div>
-                <div className="stat-label" style={statLabelStyle}>
-                  Total Bids (for logged-in user)
+            <div className="hero-illustration">
+              <div className="illustration-content">
+                <div className="gov-building">🏛️</div>
+                <div className="floating-elements">
+                  <div className="floating-card card-1">📋</div>
+                  <div className="floating-card card-2">🔒</div>
+                  <div className="floating-card card-3">⚡</div>
                 </div>
               </div>
-              <div className="stat-card">
-                <div className="stat-number" style={statNumberStyle}>
-                  {stats.users}
-                </div>
-                <div className="stat-label" style={statLabelStyle}>
-                  Total Users
-                </div>
+            </div>
+          </div>
+
+          {/* FLOATING STATS CARDS */}
+          <div className="hero-stats">
+            <div className="stat-card">
+              <div className="stat-icon">📊</div>
+              <div className="stat-content">
+                <span className="stat-value">{stats.tenders}</span>
+                <span className="stat-label">Active Tenders</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">💼</div>
+              <div className="stat-content">
+                <span className="stat-value">{stats.bids}</span>
+                <span className="stat-label">Total Bids</span>
+              </div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-icon">👥</div>
+              <div className="stat-content">
+                <span className="stat-value">{stats.users}</span>
+                <span className="stat-label">Total Users</span>
               </div>
             </div>
           </div>
         </section>
 
         {/* QUICK LINKS */}
-        <section className="quick-links-section">
+        <section className="quick-links-section scroll-reveal">
           <div className="container">
             <h2>Quick Links</h2>
             <div className="quick-links-grid">
               <div className="quick-link-card">
-                <div className="icon">📋</div>
+                <div className="card-icon">📋</div>
                 <h3>Tender Notices</h3>
                 <p>View latest tender announcements and requirements</p>
-                <Link to="/login" className="link-btn">
+                <Link to="/login" className="card-link">
                   View Tenders
                 </Link>
               </div>
               <div className="quick-link-card">
-                <div className="icon">📝</div>
+                <div className="card-icon">📝</div>
                 <h3>Submit Bid</h3>
                 <p>Participate in government tenders securely</p>
-                <Link to="/login" className="link-btn">
+                <Link to="/login" className="card-link">
                   Submit Bid
                 </Link>
               </div>
               <div className="quick-link-card">
-                <div className="icon">📊</div>
+                <div className="card-icon">📊</div>
                 <h3>Track Status</h3>
                 <p>Monitor your bid status and tender progress</p>
-                <Link to="/login" className="link-btn">
+                <Link to="/login" className="card-link">
                   Track Status
                 </Link>
               </div>
               <div className="quick-link-card">
-                <div className="icon">📚</div>
+                <div className="card-icon">📚</div>
                 <h3>Guidelines</h3>
                 <p>Read tender guidelines and procedures</p>
-                <a href="#guidelines" className="link-btn">
+                <a href="#guidelines" className="card-link">
                   View Guidelines
                 </a>
               </div>
@@ -225,8 +236,8 @@ const LandingPage = () => {
           </div>
         </section>
 
-        {/* ACTIVE TENDERS PREVIEW */}
-        <section id="tenders" className="tenders-preview">
+        {/* ACTIVE TENDERS */}
+        <section id="tenders" className="tenders-section scroll-reveal">
           <div className="container">
             <h2>Latest Tender Opportunities</h2>
             <p className="section-desc">
@@ -236,7 +247,7 @@ const LandingPage = () => {
             <div className="tenders-grid">
               <div className="tender-card">
                 <div className="tender-header">
-                  <span className="tender-type">Infrastructure</span>
+                  <span className="tender-category">Infrastructure</span>
                   <span className="tender-status open">Open</span>
                 </div>
                 <h3>Road Construction Project - Phase II</h3>
@@ -251,7 +262,7 @@ const LandingPage = () => {
               </div>
               <div className="tender-card">
                 <div className="tender-header">
-                  <span className="tender-type">Technology</span>
+                  <span className="tender-category">Technology</span>
                   <span className="tender-status open">Open</span>
                 </div>
                 <h3>Digital Transformation Initiative</h3>
@@ -266,7 +277,7 @@ const LandingPage = () => {
               </div>
               <div className="tender-card">
                 <div className="tender-header">
-                  <span className="tender-type">Healthcare</span>
+                  <span className="tender-category">Healthcare</span>
                   <span className="tender-status open">Open</span>
                 </div>
                 <h3>Medical Equipment Procurement</h3>
@@ -282,8 +293,8 @@ const LandingPage = () => {
                 </Link>
               </div>
             </div>
-            <div className="text-center" style={{ marginTop: '2rem' }}>
-              <Link to="/login" className="btn btn-primary btn-large">
+            <div className="text-center">
+              <Link to="/login" className="btn btn-primary">
                 View All Tenders
               </Link>
             </div>
@@ -291,7 +302,7 @@ const LandingPage = () => {
         </section>
 
         {/* ABOUT SECTION */}
-        <section id="about" className="about-section">
+        <section id="about" className="about-section scroll-reveal">
           <div className="container">
             <div className="about-grid">
               <div className="about-content">
@@ -306,7 +317,10 @@ const LandingPage = () => {
                     <div className="feature-icon">🔒</div>
                     <div>
                       <h4>Secure & Transparent</h4>
-                      <p>Blockchain ensures immutable records and prevents tampering</p>
+                      <p>
+                        Blockchain ensures immutable records and prevents
+                        tampering
+                      </p>
                     </div>
                   </div>
                   <div className="feature-item">
@@ -326,43 +340,53 @@ const LandingPage = () => {
                 </div>
               </div>
               <div className="about-image">
-                <div className="gov-building">🏛️</div>
+                <div className="gov-illustration">🏛️</div>
               </div>
             </div>
           </div>
         </section>
 
         {/* WHY CHOOSE US */}
-        <section className="why-choose-section">
+        <section className="why-choose-section scroll-reveal">
           <div className="container">
             <h2>Why Choose PublicTenderChain?</h2>
             <div className="benefits-grid">
               <div className="benefit-card">
+                <div className="benefit-icon">🔗</div>
                 <h3>Blockchain Security</h3>
                 <p>
-                  Immutable ledger technology ensures data integrity and prevents fraud
+                  Immutable ledger technology ensures data integrity and
+                  prevents fraud
                 </p>
               </div>
               <div className="benefit-card">
+                <div className="benefit-icon">📈</div>
                 <h3>Real-time Tracking</h3>
                 <p>Monitor tender status and bid progress in real-time</p>
               </div>
               <div className="benefit-card">
+                <div className="benefit-icon">💰</div>
                 <h3>Cost Effective</h3>
                 <p>Reduces administrative costs and eliminates paperwork</p>
               </div>
               <div className="benefit-card">
+                <div className="benefit-icon">🌐</div>
                 <h3>24/7 Access</h3>
-                <p>Access the portal anytime, anywhere with internet connectivity</p>
+                <p>
+                  Access the portal anytime, anywhere with internet connectivity
+                </p>
               </div>
               <div className="benefit-card">
+                <div className="benefit-icon">🤖</div>
                 <h3>AI-Powered Verification</h3>
                 <p>Automated quality checks and milestone verification</p>
               </div>
               <div className="benefit-card">
+                <div className="benefit-icon">🌍</div>
                 <h3>Multi-language Support</h3>
                 <p>
-                  Available in multiple Indian languages for better accessibility
+                  Available in multiple Indian languages for better
+                  accessibility
                 </p>
               </div>
             </div>
@@ -370,7 +394,7 @@ const LandingPage = () => {
         </section>
 
         {/* NEWS & UPDATES */}
-        <section className="news-section">
+        <section className="news-section scroll-reveal">
           <div className="container">
             <h2>Latest News & Updates</h2>
             <div className="news-grid">
@@ -381,12 +405,7 @@ const LandingPage = () => {
                   We have expanded our tender categories to include renewable
                   energy and smart city projects.
                 </p>
-                <button
-                  onClick={() => alert('Full article coming soon!')}
-                  className="read-more"
-                >
-                  Read More
-                </button>
+                <button className="read-more">Read More</button>
               </div>
               <div className="news-card">
                 <div className="news-date">November 28, 2024</div>
@@ -395,12 +414,7 @@ const LandingPage = () => {
                   Scheduled maintenance on December 5th from 2 AM to 4 AM IST.
                   Service may be temporarily unavailable.
                 </p>
-                <button
-                  onClick={() => alert('Full article coming soon!')}
-                  className="read-more"
-                >
-                  Read More
-                </button>
+                <button className="read-more">Read More</button>
               </div>
               <div className="news-card">
                 <div className="news-date">November 25, 2024</div>
@@ -409,12 +423,7 @@ const LandingPage = () => {
                   Free training sessions for contractors on using the new portal
                   features.
                 </p>
-                <button
-                  onClick={() => alert('Full article coming soon!')}
-                  className="read-more"
-                >
-                  Read More
-                </button>
+                <button className="read-more">Read More</button>
               </div>
             </div>
           </div>
@@ -432,27 +441,15 @@ const LandingPage = () => {
                 Technology
               </p>
               <div className="social-links">
-                <a
-                  href="https://facebook.com/govtenders"
-                  title="Facebook"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a href="https://facebook.com/govtenders" title="Facebook">
                   📘
                 </a>
-                <a
-                  href="https://twitter.com/govtenders"
-                  title="Twitter"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a href="https://twitter.com/govtenders" title="Twitter">
                   🐦
                 </a>
                 <a
                   href="https://linkedin.com/company/govtenders"
                   title="LinkedIn"
-                  target="_blank"
-                  rel="noopener noreferrer"
                 >
                   💼
                 </a>
@@ -504,26 +501,16 @@ const LandingPage = () => {
               © 2024 Government of India. All rights reserved.
             </div>
             <div className="footer-links">
-              <button onClick={() => alert('Privacy Policy - Coming Soon')}>
-                Privacy Policy
-              </button>
-              <button onClick={() => alert('Terms of Service - Coming Soon')}>
-                Terms of Service
-              </button>
-              <button onClick={() => alert('Accessibility - Coming Soon')}>
-                Accessibility
-              </button>
+              <button>Privacy Policy</button>
+              <button>Terms of Service</button>
+              <button>Accessibility</button>
             </div>
           </div>
         </div>
       </footer>
 
       {/* BACK TO TOP BUTTON */}
-      <button
-        id="backToTop"
-        title="Back to top"
-        onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-      >
+      <button id="backToTop" title="Back to top">
         ↑
       </button>
     </>

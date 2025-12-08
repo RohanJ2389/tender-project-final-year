@@ -24,6 +24,7 @@ const authRoutes = require('./routes/auth');
 const tenderRoutes = require('./routes/tenderRoutes');
 const bidRoutes = require('./routes/bids');
 const adminRoutes = require('./routes/adminRoutes');
+const publicRoutes = require('./routes/publicRoutes');
 
 // Just for debugging (can remove later)
 console.log('authRoutes type:', typeof authRoutes);
@@ -35,6 +36,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/tenders', tenderRoutes);
 app.use('/api/bids', bidRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/public', publicRoutes);
 
 // ----- Create or update default admin user -----
 async function createDefaultAdmin() {
@@ -43,9 +45,10 @@ async function createDefaultAdmin() {
 
     let adminUser = await User.findOne({ email: adminEmail });
     if (adminUser) {
-      // Update existing admin: reset password and role
+      // Update existing admin: reset password, role, and super admin flag
       adminUser.password = 'admin123'; // will be hashed by pre('save') hook
       adminUser.role = 'admin';
+      adminUser.isSuperAdmin = true; // Ensure super admin flag is set
       await adminUser.save();
       console.log('Default admin updated: admin@gmail.com / admin123');
     } else {
@@ -54,7 +57,8 @@ async function createDefaultAdmin() {
         name: 'Super Admin',
         email: adminEmail,
         password: 'admin123', // will be hashed by pre('save') hook
-        role: 'admin'
+        role: 'admin',
+        isSuperAdmin: true // Set super admin flag for new admin
       });
       await adminUser.save();
       console.log('Default admin created: admin@gmail.com / admin123');

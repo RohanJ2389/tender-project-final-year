@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import './PublicDashboardExtra.css';
 import './FilterStyles.css';
+import '../styles.css';
 import API_BASE_URL from '../api';
 import BidStatusChart from './BidStatusChart';
 import PublicBidStats from './PublicBidStats';
@@ -22,6 +23,14 @@ const PublicDashboard = () => {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [selectedTender, setSelectedTender] = useState(null);
   const [showModal, setShowModal] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [profileData, setProfileData] = useState({
+    phone: '',
+    address: '',
+    company: '',
+    city: '',
+    gstId: ''
+  });
 
   // My Bids filters
   const [searchTerm, setSearchTerm] = useState('');
@@ -167,7 +176,7 @@ const PublicDashboard = () => {
               <span className="stat-text">Your Bids</span>
             </div>
             <div className="banner-stat-card">
-              <span className="stat-number">{bids.filter(b => b.status === 'approved').length}</span>
+              <span className="stat-number">{bidStats.approvedBids}</span>
               <span className="stat-text">Approved</span>
             </div>
           </div>
@@ -420,7 +429,12 @@ const PublicDashboard = () => {
                     </span>
                   </td>
                   <td>
-                    <button className="btn btn-small btn-outline">View Details</button>
+                    <button
+                      className="btn btn-small btn-outline"
+                      onClick={() => navigate(`/public/bid/${bid._id}/tracking`)}
+                    >
+                      Track Bid
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -519,36 +533,145 @@ const PublicDashboard = () => {
     </div>
   );
 
-  const renderProfile = () => (
-    <div className="public-dashboard-content">
-      <div className="content-header">
-        <h1>My Profile</h1>
-        <p>View and manage your account information</p>
-      </div>
+  const handleSaveProfile = () => {
+    console.log('Updated Profile Data:', {
+      name: user.name,
+      email: user.email,
+      ...profileData
+    });
+    setIsEditing(false);
+    alert('Profile updated successfully!');
+  };
 
+  const handleCancelEdit = () => {
+    setProfileData({
+      phone: '',
+      address: '',
+      company: '',
+      city: '',
+      gstId: ''
+    });
+    setIsEditing(false);
+  };
+
+  const renderProfile = () => (
+    <div className="profile-page">
       <div className="profile-card">
+        {/* Header with Avatar and Basic Info */}
         <div className="profile-header">
           <div className="profile-avatar">
             <span>{user.name?.charAt(0)?.toUpperCase() || 'U'}</span>
           </div>
-          <div className="profile-info">
-            <h3>{user.name || 'User'}</h3>
-            <p className="profile-role">Public User / Contractor</p>
-            <p className="profile-email">{user.email || 'user@example.com'}</p>
+          <div className="profile-name">{user.name || 'User'}</div>
+          <div className="profile-role">Public User / Contractor</div>
+          <div className="profile-email">{user.email || 'user@example.com'}</div>
+          {!isEditing && (
+            <button className="btn btn-primary edit-profile-btn" onClick={() => setIsEditing(true)}>
+              Edit Profile
+            </button>
+          )}
+        </div>
+
+        {/* Contact Information Section */}
+        <div className="profile-contact-section">
+          <h3 className="profile-section-title">Contact Information</h3>
+          <div className="profile-contact-grid">
+            <div className="profile-contact-field">
+              <label>Phone Number</label>
+              {isEditing ? (
+                <input
+                  type="tel"
+                  value={profileData.phone}
+                  onChange={(e) => setProfileData({...profileData, phone: e.target.value})}
+                  placeholder="Enter phone number"
+                />
+              ) : (
+                <p>{profileData.phone || 'Not provided'}</p>
+              )}
+            </div>
+            <div className="profile-contact-field">
+              <label>Address</label>
+              {isEditing ? (
+                <textarea
+                  value={profileData.address}
+                  onChange={(e) => setProfileData({...profileData, address: e.target.value})}
+                  placeholder="Enter your address"
+                  rows="3"
+                />
+              ) : (
+                <p>{profileData.address || 'Not provided'}</p>
+              )}
+            </div>
+            <div className="profile-contact-field">
+              <label>Company / Organization</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={profileData.company}
+                  onChange={(e) => setProfileData({...profileData, company: e.target.value})}
+                  placeholder="Enter company name"
+                />
+              ) : (
+                <p>{profileData.company || 'Not provided'}</p>
+              )}
+            </div>
+            <div className="profile-contact-field">
+              <label>City / State</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={profileData.city}
+                  onChange={(e) => setProfileData({...profileData, city: e.target.value})}
+                  placeholder="Enter city and state"
+                />
+              ) : (
+                <p>{profileData.city || 'Not provided'}</p>
+              )}
+            </div>
+            <div className="profile-contact-field">
+              <label>GST / Registration ID (Optional)</label>
+              {isEditing ? (
+                <input
+                  type="text"
+                  value={profileData.gstId}
+                  onChange={(e) => setProfileData({...profileData, gstId: e.target.value})}
+                  placeholder="Enter GST or registration ID"
+                />
+              ) : (
+                <p>{profileData.gstId || 'Not provided'}</p>
+              )}
+            </div>
           </div>
         </div>
-        <div className="profile-stats">
-          <div className="profile-stat">
-            <span className="stat-number">{bids.length}</span>
-            <span className="stat-label">Total Bids</span>
+
+        {/* Edit Mode Buttons */}
+        {isEditing && (
+          <div className="profile-edit-actions">
+            <button className="btn btn-secondary" onClick={handleCancelEdit}>
+              Cancel
+            </button>
+            <button className="btn btn-primary" onClick={handleSaveProfile}>
+              Save Changes
+            </button>
           </div>
-          <div className="profile-stat">
-            <span className="stat-number">{bids.filter(b => b.status === 'approved').length}</span>
-            <span className="stat-label">Approved Bids</span>
-          </div>
-          <div className="profile-stat">
-            <span className="stat-number">{bids.filter(b => b.status === 'pending').length}</span>
-            <span className="stat-label">Pending Bids</span>
+        )}
+
+        {/* Account Summary Section */}
+        <div className="profile-summary">
+          <h3 className="profile-section-title">Account Summary</h3>
+          <div className="profile-stats-grid">
+            <div className="profile-stat-card">
+              <div className="profile-stat-value">{bidStats.totalBids}</div>
+              <div className="profile-stat-label">Total Bids</div>
+            </div>
+            <div className="profile-stat-card">
+              <div className="profile-stat-value">{bidStats.approvedBids}</div>
+              <div className="profile-stat-label">Approved Bids</div>
+            </div>
+            <div className="profile-stat-card">
+              <div className="profile-stat-value">{bidStats.pendingBids}</div>
+              <div className="profile-stat-label">Pending Bids</div>
+            </div>
           </div>
         </div>
       </div>

@@ -27,8 +27,16 @@ const bidSchema = new mongoose.Schema({
     default: 'pending'
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  toJSON: { virtuals: true }
 });
+
+// Transform function to include id field
+bidSchema.methods.toJSON = function() {
+  const bidObject = this.toObject();
+  bidObject.id = bidObject._id.toString();
+  return bidObject;
+};
 
 // Index for efficient queries
 bidSchema.index({ tenderId: 1, bidderId: 1 });

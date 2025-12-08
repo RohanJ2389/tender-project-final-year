@@ -174,6 +174,92 @@ router.put('/:bidId', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/bids/:bidId/tracking - Get bid tracking data for logged-in user
+router.get('/:bidId/tracking', authenticateToken, async (req, res) => {
+  console.log('Bid tracking route hit, params:', req.params, 'bidId:', req.params.bidId);
+  try {
+    const userId = req.user.userId;
+    const bidId = req.params.bidId;
+
+    if (!bidId || bidId === 'undefined') {
+      console.log('Invalid bidId:', bidId);
+      return res.status(400).json({ msg: 'Invalid bid ID' });
+    }
+
+    const bid = await Bid.findOne({ _id: bidId, bidderId: userId })
+      .populate('tenderId', 'title');
+
+    if (!bid) {
+      return res.status(404).json({ msg: 'Bid not found' });
+    }
+
+    // Map bid status to tracking status
+    let currentStatus;
+    switch (bid.status) {
+      case 'pending':
+        currentStatus = 'UNDER_REVIEW';
+        break;
+      case 'accepted':
+        currentStatus = 'APPROVED';
+        break;
+      case 'rejected':
+        currentStatus = 'REJECTED';
+        break;
+      default:
+        currentStatus = 'PENDING';
+    }
+
+    // Build timeline
+    const timeline = [
+      {
+        step: 'SUBMITTED',
+        label: 'Submitted',
+        time: bid.createdAt,
+        note: 'Bid submitted successfully'
+      },
+      {
+        step: 'UNDER_REVIEW',
+        label: 'Under Review',
+        time: bid.status !== 'pending' ? bid.updatedAt : null,
+        note: 'Department is reviewing your bid'
+      },
+      {
+        step: 'TECHNICAL_EVAL',
+        label: 'Technical Evaluation',
+        time: bid.status !== 'pending' ? bid.updatedAt : null,
+        note: 'Technical evaluation in progress'
+      },
+      {
+        step: 'FINANCIAL_EVAL',
+        label: 'Financial Evaluation',
+        time: bid.status !== 'pending' ? bid.updatedAt : null,
+        note: 'Financial evaluation in progress'
+      },
+      {
+        step: 'FINAL_DECISION',
+        label: 'Final Decision',
+        time: bid.status !== 'pending' ? bid.updatedAt : null,
+        note: bid.status === 'accepted' ? 'Bid approved' : bid.status === 'rejected' ? 'Bid rejected' : 'Final decision pending'
+      }
+    ];
+
+    const trackingData = {
+      bidId: bid._id,
+      tenderId: bid.tenderId._id,
+      tenderTitle: bid.tenderId.title,
+      bidAmount: bid.amount,
+      submissionDate: bid.createdAt,
+      currentStatus,
+      timeline
+    };
+
+    res.json(trackingData);
+  } catch (error) {
+    console.error('Get bid tracking error:', error.message);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
 // GET /api/bids - Get all bids (admin only)
 router.get('/', authenticateToken, async (req, res) => {
   try {

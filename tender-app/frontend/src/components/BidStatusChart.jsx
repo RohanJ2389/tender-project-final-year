@@ -12,10 +12,10 @@ const BidStatusChart = ({ approved = 0, rejected = 0, pending = 0 }) => {
 
   if (!hasData) {
     return (
-      <div className="bid-status-chart-card">
-        <div className="bid-status-chart-header">
+      <div className="bid-status-card">
+        <div className="bid-status-card-header">
           <h3>Bid Status Overview</h3>
-          <span className="total-count">Total: 0</span>
+          <span className="bid-status-total-pill">Total: 0</span>
         </div>
         <div className="bid-status-chart no-data">
           <p>No bid status data yet.</p>
@@ -62,19 +62,28 @@ const BidStatusChart = ({ approved = 0, rejected = 0, pending = 0 }) => {
   };
 
   return (
-    <div className="bid-status-chart-card">
-      <div className="bid-status-chart-header">
+    <div className="bid-status-card">
+      <div className="bid-status-card-header">
         <h3>Bid Status Overview</h3>
-        <span className="total-count">Total: {total}</span>
+        <span className="bid-status-total-pill">Total: {total}</span>
       </div>
       <div className="bid-status-chart-wrapper">
         <Doughnut data={data} options={options} />
       </div>
-      <ul className="bid-status-legend">
-        <li>Approved: {approved}</li>
-        <li>Rejected: {rejected}</li>
-        <li>Pending: {pending}</li>
-      </ul>
+      <div className="bid-status-counts">
+        <span className="count-item">
+          <span className="count-dot approved"></span>
+          Approved: {approved}
+        </span>
+        <span className="count-item">
+          <span className="count-dot rejected"></span>
+          Rejected: {rejected}
+        </span>
+        <span className="count-item">
+          <span className="count-dot pending"></span>
+          Pending: {pending}
+        </span>
+      </div>
     </div>
   );
 };

@@ -1233,3 +1233,27 @@
     width: 100%;
   }
 }
+/* Bid Placed – Aqua Premium Style */
+.btn-placed,
+.btn-primary:disabled,
+.btn-primary[disabled] {
+  background: linear-gradient(135deg, #00B4DB 0%, #0083B0 100%) !important; /* Aqua gradient */
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  cursor: not-allowed !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 131, 176, 0.35) !important;
+  transition: all 0.25s ease-in-out !important;
+}
+
+.btn-placed:hover,
+.btn-primary:disabled:hover,
+.btn-primary[disabled]:hover {
+  transform: scale(1.05);
+  box-shadow: 0 6px 15px rgba(0, 131, 176, 0.45) !important;
+}
+
+
+
+

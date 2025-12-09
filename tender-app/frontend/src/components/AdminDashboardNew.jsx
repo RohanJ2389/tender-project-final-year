@@ -14,6 +14,10 @@ const AdminDashboard = () => {
   const [user, setUser] = useState({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
+  // Filtered bid arrays
+  const pendingBids = bids.filter(bid => bid.status === 'pending');
+  const processedBids = bids.filter(bid => bid.status === 'accepted' || bid.status === 'rejected');
+
   useEffect(() => {
     // Check authentication
     const token = localStorage.getItem('token');
@@ -256,6 +260,32 @@ const AdminDashboard = () => {
     navigate(`/admin/tender/${tenderId}/edit`);
   };
 
+  const handlePublish = async (tenderId) => {
+    if (!window.confirm('Are you sure you want to publish this tender?')) return;
+
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/api/tenders/${tenderId}/publish`, {
+        method: 'PUT',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+
+      if (response.ok) {
+        const updated = await response.json();
+        setTenders(prev =>
+          prev.map(t => t._id === updated._id ? updated : t)
+        );
+        alert('Tender published successfully!');
+      } else {
+        const err = await response.json();
+        alert(err.msg || err.message || 'Failed to publish tender');
+      }
+    } catch (error) {
+      console.error('Error publishing tender:', error);
+      alert('Network error while publishing tender');
+    }
+  };
+
   const handleCloseTender = async (tenderId) => {
     if (!window.confirm('Are you sure you want to close this tender?')) return;
 
@@ -490,7 +520,15 @@ const AdminDashboard = () => {
                     >
                       Edit
                     </button>
-                    {tender.status !== 'closed' && (
+                    {tender.status === 'draft' && (
+                      <button
+                        className="btn btn-primary btn-small"
+                        onClick={() => handlePublish(tender._id)}
+                      >
+                        Publish
+                      </button>
+                    )}
+                    {tender.status === 'published' && (
                       <button
                         className="btn btn-small btn-warning"
                         onClick={() => handleCloseTender(tender._id)}
@@ -534,7 +572,7 @@ const AdminDashboard = () => {
             </tr>
           </thead>
           <tbody>
-            {bids.map((bid) => (
+            {pendingBids.map((bid) => (
               <tr key={bid._id}>
                 <td>{bid.tenderId?.title || 'N/A'}</td>
                 <td>{bid.bidderId?.name || 'Anonymous'}</td>
@@ -564,6 +602,44 @@ const AdminDashboard = () => {
                       </>
                     )}
                   </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  const renderApprovedRejectedBids = () => (
+    <div className="dashboard-content">
+      <div className="content-header">
+        <h1>Approved / Rejected Bids</h1>
+        <p>View approved and rejected bids</p>
+      </div>
+
+      <div className="table-container">
+        <table className="gov-table">
+          <thead>
+            <tr>
+              <th>Tender</th>
+              <th>Bidder</th>
+              <th>Amount</th>
+              <th>Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {processedBids.map((bid) => (
+              <tr key={bid._id}>
+                <td>{bid.tenderId?.title || 'N/A'}</td>
+                <td>{bid.bidderId?.name || 'Anonymous'}</td>
+                <td>₹{bid.amount}</td>
+                <td>{new Date(bid.createdAt).toLocaleDateString()}</td>
+                <td>
+                  <span className={`status-badge ${bid.status || 'pending'}`}>
+                    {bid.status || 'Pending'}
+                  </span>
                 </td>
               </tr>
             ))}
@@ -753,7 +829,7 @@ const AdminDashboard = () => {
       case 'create-tender': return renderCreateTender();
       case 'manage-tenders': return renderManageTenders();
       case 'view-bids': return renderViewBids();
-      case 'approved-rejected': return renderViewBids(); // Same as view-bids for now
+      case 'approved-rejected': return renderApprovedRejectedBids();
       case 'users': return renderUsers();
       case 'reports': return renderReports();
       default: return renderOverview();

@@ -7,7 +7,11 @@ const API_BASE_URL =
   process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000';
 
 const LandingPage = () => {
-  const [stats, setStats] = useState({ tenders: 0, bids: 0, users: 0 });
+  const [landingStats, setLandingStats] = useState({
+    activeTenders: 0,
+    totalBids: 0,
+    totalUsers: 0,
+  });
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
@@ -53,33 +57,13 @@ const LandingPage = () => {
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem('token');
-
-      const tendersPromise = fetch(`${API_BASE_URL}/api/tenders`);
-
-      const bidsPromise = token
-        ? fetch(`${API_BASE_URL}/api/bids/my-bids`, {
-            headers: { Authorization: `Bearer ${token}` },
-          })
-        : Promise.resolve({ ok: false });
-
-      const [tendersRes, bidsRes] = await Promise.all([
-        tendersPromise,
-        bidsPromise,
-      ]);
-
-      if (tendersRes.ok) {
-        const tenders = await tendersRes.json();
-        setStats((prev) => ({ ...prev, tenders: tenders.length }));
+      const response = await fetch(`${API_BASE_URL}/api/public/landing-stats`);
+      if (response.ok) {
+        const stats = await response.json();
+        setLandingStats(stats);
+      } else {
+        console.error('Error fetching landing stats:', response.statusText);
       }
-
-      if (bidsRes.ok) {
-        const bids = await bidsRes.json();
-        setStats((prev) => ({ ...prev, bids: bids.length }));
-      }
-
-      // You can later replace this with a real users count API
-      setStats((prev) => ({ ...prev, users: prev.users || 0 }));
     } catch (error) {
       console.error('Error fetching stats:', error);
     }
@@ -184,21 +168,21 @@ const LandingPage = () => {
             <div className="stat-card">
               <div className="stat-icon">📊</div>
               <div className="stat-content">
-                <span className="stat-value">{stats.tenders}</span>
+                <span className="stat-value">{landingStats.activeTenders}</span>
                 <span className="stat-label">Active Tenders</span>
               </div>
             </div>
             <div className="stat-card">
               <div className="stat-icon">💼</div>
               <div className="stat-content">
-                <span className="stat-value">{stats.bids}</span>
+                <span className="stat-value">{landingStats.totalBids}</span>
                 <span className="stat-label">Total Bids</span>
               </div>
             </div>
             <div className="stat-card">
               <div className="stat-icon">👥</div>
               <div className="stat-content">
-                <span className="stat-value">{stats.users}</span>
+                <span className="stat-value">{landingStats.totalUsers}</span>
                 <span className="stat-label">Total Users</span>
               </div>
             </div>

@@ -59,10 +59,17 @@ router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   }
 });
 
-// GET /api/tenders - Fetch all tenders
-router.get('/', async (req, res) => {
+// GET /api/tenders - Fetch all tenders (filtered by user role)
+router.get('/', authenticateToken, async (req, res) => {
   try {
-    const tenders = await Tender.find()
+    let query = {};
+
+    // If user is not admin, only show published tenders
+    if (req.user.role !== 'admin') {
+      query.status = 'published';
+    }
+
+    const tenders = await Tender.find(query)
       .populate('createdBy', 'name')
       .sort({ createdAt: -1 });
 
@@ -141,6 +148,32 @@ router.put('/:id', authenticateToken, requireAdmin, async (req, res) => {
       return res.status(400).json({ message: 'Validation error: ' + error.message });
     }
     res.status(500).json({ message: 'Server error occurred while updating tender' });
+  }
+});
+
+// PUT /api/tenders/:id/publish - Publish tender by ID
+router.put('/:id/publish', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const tender = await Tender.findById(req.params.id);
+
+    if (!tender) {
+      return res.status(404).json({ msg: 'Tender not found' });
+    }
+
+    if (tender.status !== 'draft') {
+      return res.status(400).json({ msg: 'Only draft tenders can be published' });
+    }
+
+    const updatedTender = await Tender.findByIdAndUpdate(
+      req.params.id,
+      { status: 'published' },
+      { new: true }
+    );
+
+    res.json(updatedTender);
+  } catch (err) {
+    console.error('Error publishing tender:', err);
+    res.status(500).json({ msg: 'Failed to publish tender' });
   }
 });
 

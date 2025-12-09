@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Bid = require('../models/Bid');
 const User = require('../models/User');
+const Tender = require('../models/Tender');
 const Notification = require('../models/Notification');
 const { authenticateToken } = require('./auth');
 
@@ -145,6 +146,26 @@ router.put('/profile', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     console.error('Update profile error:', error.message);
+    res.status(500).json({ msg: 'Server error' });
+  }
+});
+
+// GET /api/public/landing-stats - Get landing page statistics
+router.get('/landing-stats', async (req, res) => {
+  try {
+    const activeTenders = await Tender.countDocuments({ status: 'published' });
+    const totalBids = await Bid.countDocuments();
+    const totalUsers = await User.countDocuments({ role: 'user' });
+
+    const stats = {
+      activeTenders,
+      totalBids,
+      totalUsers,
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Get landing stats error:', error.message);
     res.status(500).json({ msg: 'Server error' });
   }
 });

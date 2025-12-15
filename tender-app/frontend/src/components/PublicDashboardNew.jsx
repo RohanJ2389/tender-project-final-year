@@ -22,6 +22,7 @@ const PublicDashboard = () => {
   const [activeSection, setActiveSection] = useState('overview');
   const [user, setUser] = useState({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [selectedTender, setSelectedTender] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -793,6 +794,12 @@ const PublicDashboard = () => {
             </div>
           </div>
           <div className="public-header-right">
+            <button
+              className="mobile-hamburger-btn"
+              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+            >
+              ☰
+            </button>
             <NotificationBell />
             <div className="public-user-info">
               <span className="public-user-role">Public User</span>
@@ -809,7 +816,7 @@ const PublicDashboard = () => {
         <aside
           className={`public-dashboard-sidebar ${
             sidebarCollapsed ? 'collapsed' : ''
-          }`}
+          } ${mobileSidebarOpen ? 'mobile-open' : ''}`}
         >
           <div className="public-sidebar-header">
             <button

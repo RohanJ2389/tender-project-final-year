@@ -254,7 +254,7 @@ img {
 .gov-top-bar {
   background: linear-gradient(135deg, var(--navy), var(--royal-blue));
   color: var(--white);
-  padding: var(--space-2) 0;
+  padding: var(--space-4) 0;
 }
 
 .gov-top-bar .container {
@@ -294,7 +294,7 @@ img {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: var(--space-4) 0;
+  padding: var(--space-8) 0;
 }
 
 .logo-section {
@@ -439,7 +439,7 @@ img {
   padding: var(--space-20) 0 10rem;
   position: relative;
   overflow: hidden;
-  margin-top: 140px;
+  margin-top: 160px;
 }
 
 .hero-section::before {
@@ -1257,18 +1257,20 @@ section {
   .gov-nav .container {
     flex-direction: column;
     gap: var(--space-4);
+    padding: var(--space-6) 0;
   }
 
   .hamburger {
     display: flex;
+    z-index: 1002;
   }
 
   .nav-menu {
     position: fixed;
-    top: 140px;
+    top: 0;
     left: -100%;
     width: 100%;
-    height: calc(100vh - 140px);
+    height: 100vh;
     background: var(--white);
     flex-direction: column;
     justify-content: flex-start;
@@ -1277,7 +1279,7 @@ section {
     gap: var(--space-6);
     transition: left 0.3s ease;
     box-shadow: var(--shadow-lg);
-    z-index: 999;
+    z-index: 1001;
   }
 
   .nav-menu.open {
@@ -1299,8 +1301,17 @@ section {
   }
 
   .hero-section {
-    padding: var(--space-16) 0 var(--space-20);
+    padding: var(--space-12) 0 var(--space-16);
     margin-top: 160px;
+    overflow-x: hidden;
+  }
+
+  .hero-section .container {
+    text-align: center;
+  }
+
+  .hero-content {
+    text-align: center;
   }
 
   .hero-content h1 {
@@ -1310,6 +1321,18 @@ section {
   .hero-actions {
     flex-direction: column;
     gap: var(--space-3);
+    align-items: center;
+  }
+
+  .hero-stats {
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-4);
+  }
+
+  .stat-card {
+    width: 100%;
+    max-width: 280px;
   }
 
   .quick-links-grid,

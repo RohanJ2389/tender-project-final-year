@@ -204,7 +204,10 @@
 @media (max-width: 768px) {
   .notification-dropdown {
     width: 320px;
-    right: -20px;
+    right: 0;
+    left: auto;
+    transform: translateX(-50%);
+    margin-left: 50%;
   }
 
   .dropdown-header {

@@ -13,6 +13,7 @@ const AdminDashboard = () => {
   const [activeSection, setActiveSection] = useState('overview');
   const [user, setUser] = useState({});
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // Filtered bid arrays
   const pendingBids = bids.filter(bid => bid.status === 'pending');
@@ -327,6 +328,13 @@ const AdminDashboard = () => {
     } catch (error) {
       console.error('Error deleting tender:', error);
       alert('Network error while deleting tender');
+    }
+  };
+
+  const handleMenuClick = (sectionId) => {
+    setActiveSection(sectionId);
+    if (mobileSidebarOpen) {
+      setMobileSidebarOpen(false);
     }
   };
 
@@ -849,6 +857,13 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div className="header-right">
+            <button
+              className="mobile-hamburger"
+              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+              aria-label="Toggle navigation menu"
+            >
+              ☰
+            </button>
             <div className="user-info">
               <span className="user-role">Administrator</span>
               <span className="user-name">{user.name || 'Admin User'}</span>
@@ -862,7 +877,7 @@ const AdminDashboard = () => {
 
       <div className="dashboard-layout">
         {/* Sidebar */}
-        <aside className={`dashboard-sidebar ${sidebarCollapsed ? 'collapsed' : ''}`}>
+        <aside className={`dashboard-sidebar ${sidebarCollapsed ? 'collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
           <div className="sidebar-header">
             <button
               className="sidebar-toggle"
@@ -879,7 +894,7 @@ const AdminDashboard = () => {
                 <li key={item.id}>
                   <button
                     className={activeSection === item.id ? 'active' : ''}
-                    onClick={() => setActiveSection(item.id)}
+                    onClick={() => handleMenuClick(item.id)}
                     title={sidebarCollapsed ? item.label : ''}
                   >
                     <span className="nav-icon">{item.icon}</span>
@@ -897,6 +912,12 @@ const AdminDashboard = () => {
             </div>
           </div>
         </aside>
+
+        {/* Mobile Overlay */}
+        <div
+          className={`sidebar-overlay ${mobileSidebarOpen ? 'active' : ''}`}
+          onClick={() => setMobileSidebarOpen(false)}
+        ></div>
 
         {/* Main Content */}
         <main className="dashboard-main">

@@ -106,21 +106,21 @@ const LandingPage = () => {
             </div>
             <ul className={`nav-menu ${menuOpen ? 'open' : ''}`}>
               <li>
-                <a href="#home" className="active">
+                <a href="#home" className="active" onClick={toggleMenu}>
                   Home
                 </a>
               </li>
               <li>
-                <a href="#tenders">Active Tenders</a>
+                <a href="#tenders" onClick={toggleMenu}>Active Tenders</a>
               </li>
               <li>
-                <a href="#about">About</a>
+                <a href="#about" onClick={toggleMenu}>About</a>
               </li>
               <li>
-                <a href="#help">Help</a>
+                <a href="#help" onClick={toggleMenu}>Help</a>
               </li>
               <li>
-                <a href="#contact">Contact</a>
+                <a href="#contact" onClick={toggleMenu}>Contact</a>
               </li>
             </ul>
             <button className="hamburger" onClick={toggleMenu}>
